@@ -5,19 +5,21 @@ Matches https://github.com/cosmos/ibc/commit/76f25771b42f5c54415b310632751d58501
 import _ from 'underscore';
 import { Event } from './events.js';
 
-const P = 'provider';
-const C = 'consumer';
-const UNBONDING_SECONDS = 45;
-const NUM_VALIDATORS = 4;
-const MAX_VALIDATORS = 2; // allows jailing 2 validators
-const ZERO_TIMEOUT_HEIGHT = 100000;
-const CCV_TIMEOUT_TIMESTAMP = 100000;
-const SLASH_DOUBLESIGN = 1 / 2;
-const SLASH_DOWNTIME = 1 / 4;
-const JAIL_SECONDS = 999999999999999;
-const BLOCK_SECONDS = 5;
-const TOKEN_SCALAR = 10000;
-const INITIAL_DELEGATOR_TOKENS = 1000000000000000;
+import {
+  P,
+  C,
+  UNBONDING_SECONDS,
+  NUM_VALIDATORS,
+  MAX_VALIDATORS,
+  ZERO_TIMEOUT_HEIGHT,
+  CCV_TIMEOUT_TIMESTAMP,
+  SLASH_DOUBLESIGN,
+  SLASH_DOWNTIME,
+  JAIL_SECONDS,
+  BLOCK_SECONDS,
+  TOKEN_SCALAR,
+  INITIAL_DELEGATOR_TOKENS,
+} from './constants.js';
 
 enum Status {
   BONDED = 'bonded',
