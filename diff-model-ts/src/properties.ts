@@ -1,20 +1,6 @@
 import { strict as assert } from 'node:assert';
 import _ from 'underscore';
-import {
-  P,
-  C,
-  UNBONDING_SECONDS,
-  NUM_VALIDATORS,
-  MAX_VALIDATORS,
-  ZERO_TIMEOUT_HEIGHT,
-  CCV_TIMEOUT_TIMESTAMP,
-  SLASH_DOUBLESIGN,
-  SLASH_DOWNTIME,
-  JAIL_SECONDS,
-  BLOCK_SECONDS,
-  TOKEN_SCALAR,
-  INITIAL_DELEGATOR_TOKENS,
-} from './constants.js';
+import { P, C, UNBONDING_SECONDS, NUM_VALIDATORS } from './constants.js';
 
 class PartialOrder {
   greatestPred = _.object([

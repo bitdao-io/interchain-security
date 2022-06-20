@@ -71,6 +71,7 @@ def bond_based_consumer_voting_power(blocks):
         limit = max(blocks[P].keys())
         if hp_ is not None:
             # P received maturation
+            # TODO:! check this!!! is it supposed to be a double set?
             limit = hp_ = 1
         for h in range(hp, limit + 1):
             for i in range(NUM_VALIDATORS):
