@@ -509,11 +509,6 @@ class CCVConsumer {
   };
   onReceiveVSC = (data: Vsc) => {
     this.hToVscID[this.m.h[C] + 1] = data.vscID;
-    /*
-    Pending slash requests would be sent here, but
-    we model an established system, assuming a
-    successful handshake.
-    */
     this.pendingChanges.push(data.changes);
     this.maturingVscs.set(data.vscID, this.m.t[C] + UNBONDING_SECONDS);
     data.slashAcks.forEach((val) => {
@@ -579,17 +574,17 @@ class Model {
     //TODO:
   };
   hasUndelivered = (chain) => {
-    return !this.outbox[{ P: C, C: P }[chain]].isEmpty();
+    return !this.outbox[chain === P ? C : P].isEmpty();
   };
   idempotentBeginBlock = (chain) => {
     if (this.mustBeginBlock[chain]) {
       this.mustBeginBlock[chain] = false;
       this.h[chain] += 1;
       this.t[chain] = this.T;
-      if (chain == P) {
+      if (chain === P) {
         // No op
       }
-      if (chain == C) {
+      if (chain === C) {
         this.ccvC.beginBlock();
       }
     }
@@ -626,13 +621,13 @@ class Model {
   };
   deliver = (chain) => {
     this.idempotentBeginBlock(chain);
-    if (chain == P) {
+    if (chain === P) {
       this.outbox[C].consume().forEach((p) => {
         // this.blocks.partial_order.deliver(P, p.sendHeight, this.h[P]);
         this.ccvP.onReceive(p.data);
       });
     }
-    if (chain == C) {
+    if (chain === C) {
       this.outbox[P].consume().forEach((p) => {
         // this.blocks.partial_order.deliver(C, p.sendHeight, this.h[C])
         this.ccvC.onReceive(p.data);
