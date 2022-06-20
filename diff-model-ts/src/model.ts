@@ -126,7 +126,7 @@ class Staking {
   // tokens = shares before any slashing or rewards happen
   // 1 token is self delegated by validators
   // denominated in tokens, but use 1-1 exchange rate
-  tokens = this.delegation.map((it) => it + 1 * TOKEN_SCALAR);
+  tokens: number[] = this.delegation.map((it) => it + 1 * TOKEN_SCALAR);
   // validator status
   status = [
     Status.BONDED,
@@ -134,14 +134,12 @@ class Staking {
     Status.UNBONDED,
     Status.UNBONDED,
   ];
-  // unbonding delegations (undels)
-  undelegationQ = [];
-  // unbonding validators (unvals)
-  validatorQ = [];
-  // jailed? If yes, timestamp of unjailing
-  jailed = new Array(NUM_VALIDATORS).fill(undefined);
-  // delegator balance, hardcoded
-  delegatorTokens = INITIAL_DELEGATOR_TOKENS;
+  undelegationQ: Undelegation[] = [];
+  validatorQ: Unval[] = [];
+  jailed: number | undefined[] = new Array(NUM_VALIDATORS).fill(
+    undefined,
+  );
+  delegatorTokens: number = INITIAL_DELEGATOR_TOKENS;
   // used to track unbonding and redelegation entries, as well as
   // map to unbonding validators, in order to track onHold
   opID = 0;
@@ -447,14 +445,10 @@ class CCVProvider {
 class CCVConsumer {
   m;
   hToVscID = { 0: 0, 1: 0 };
-  // List of maps
-  pendingChanges = [];
-  // Maps vscID to unbonding time (timestamp)
-  maturingVscs = new Map();
-  // Maps val to bool
+  pendingChanges: Map<number, number>[] = [];
+  maturingVscs: Map<number, number> = new Map();
   outstandingDowntime = new Array(NUM_VALIDATORS).fill(false);
-  // Maps val to power
-  power = new Array(NUM_VALIDATORS).fill(undefined);
+  power: number | undefined[] = new Array(NUM_VALIDATORS).fill(undefined);
 
   constructor(model) {
     this.m = model;
