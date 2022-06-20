@@ -35,7 +35,11 @@ def bond_based_consumer_voting_power(blocks):
     def power_provider(block):
         return {
             i: block.snapshot.tokens[i]
-            + sum(e.initial_balance for e in block.snapshot.undelegationQ if e.val == i)
+            + sum(
+                e.initial_balance
+                for e in block.snapshot.undelegationQ
+                if e.val == i
+            )
             for i in range(NUM_VALIDATORS)
         }
 
@@ -46,7 +50,9 @@ def bond_based_consumer_voting_power(blocks):
 
         hp = partial_order.get_greatest_predecessor(C, hc)
         if hp is None:
-            assert False, "No greatest predecessor for consumer block found!"
+            assert (
+                False
+            ), "No greatest predecessor for consumer block found!"
 
         def get_hc_(ts_hc):
             heights = sorted(blocks[C].keys())

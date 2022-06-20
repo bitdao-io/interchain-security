@@ -16,10 +16,16 @@ from .properties import *
 
 Delegate = recordclass("Delegate", ["val", "amt"])
 Undelegate = recordclass("Undelegate", ["val", "amt"])
-JumpNBlocks = recordclass("JumpNBlocks", ["chains", "n", "seconds_per_block"])
+JumpNBlocks = recordclass(
+    "JumpNBlocks", ["chains", "n", "seconds_per_block"]
+)
 Deliver = recordclass("Deliver", ["chain"])
-ProviderSlash = recordclass("ProviderSlash", ["val", "power", "height", "factor"])
-ConsumerSlash = recordclass("ConsumerSlash", ["val", "power", "height", "is_downtime"])
+ProviderSlash = recordclass(
+    "ProviderSlash", ["val", "power", "height", "factor"]
+)
+ConsumerSlash = recordclass(
+    "ConsumerSlash", ["val", "power", "height", "is_downtime"]
+)
 
 
 class Shaper:
@@ -30,8 +36,12 @@ class Shaper:
 
     def __init__(self, model):
         self.m = model
-        self.delegated_since_block = {i: False for i in range(NUM_VALIDATORS)}
-        self.undelegated_since_block = {i: False for i in range(NUM_VALIDATORS)}
+        self.delegated_since_block = {
+            i: False for i in range(NUM_VALIDATORS)
+        }
+        self.undelegated_since_block = {
+            i: False for i in range(NUM_VALIDATORS)
+        }
         self.jailed = {i: False for i in range(NUM_VALIDATORS)}
         self.last_jumped = []
 
@@ -75,8 +85,12 @@ class Shaper:
         scale = sum(distr.values())
         distr = {k: v / scale for k, v in distr.items()}
         # Choose a Class
-        class_name = random.choices(list(distr.keys()), weights=list(distr.values()))[0]
-        templates = [t for t in templates if t.__class__.__name__ == class_name]
+        class_name = random.choices(
+            list(distr.keys()), weights=list(distr.values())
+        )[0]
+        templates = [
+            t for t in templates if t.__class__.__name__ == class_name
+        ]
         # Choose a class instance
         a = random.choice(templates)
         if class_name == "Delegate":
@@ -155,8 +169,12 @@ class Shaper:
         a.n = random.choice([1, 6])
         a.seconds_per_block = BLOCK_SECONDS
         if P in a.chains:
-            self.delegated_since_block = {i: False for i in range(NUM_VALIDATORS)}
-            self.undelegated_since_block = {i: False for i in range(NUM_VALIDATORS)}
+            self.delegated_since_block = {
+                i: False for i in range(NUM_VALIDATORS)
+            }
+            self.undelegated_since_block = {
+                i: False for i in range(NUM_VALIDATORS)
+            }
 
     def select_Deliver(self, a):
         return
@@ -201,15 +219,18 @@ class Trace:
 
         def to_json():
             def ugly():
+                actions = [
+                    {"kind": e.__class__.__name__} | asdict(e)
+                    for e in self.actions
+                ]
                 ret = {
-                    "actions": [
-                        {"kind": e.__class__.__name__} | asdict(e) for e in self.actions
-                    ],
-                    "consequences": self.consequences,
+                    "transitions": list(zip(actions, self.consequences)),
                     "blocks": self.blocks,
                     "events": self.events,
                 }
-                return json.loads(json.dumps(ret, indent=2, default=default))
+                return json.loads(
+                    json.dumps(ret, indent=2, default=default)
+                )
 
             def pretty(o):
                 def blocks(bs):
@@ -220,13 +241,16 @@ class Trace:
 
                 return [
                     {
-                        "actions": o["actions"],
+                        "transitions": o["transitions"],
                         "events": o["events"]["events"],
                         "blocks": {
-                            "provider": blocks(o["blocks"]["blocks"]["provider"]),
-                            "consumer": blocks(o["blocks"]["blocks"]["consumer"]),
+                            "provider": blocks(
+                                o["blocks"]["blocks"]["provider"]
+                            ),
+                            "consumer": blocks(
+                                o["blocks"]["blocks"]["consumer"]
+                            ),
                         },
-                        "consequences": o["consequences"],
                     }
                 ]
 
@@ -260,7 +284,7 @@ def load_debug_actions():
 
 def gen():
     debug = False
-    GOAL_TIME_MINS = 20
+    GOAL_TIME_MINS = 5
     NUM_ACTIONS = 40
 
     DIR = "traces/"
@@ -319,7 +343,9 @@ def gen():
     print()
     total = sum(c for _, c in cnt.most_common())
     stats = {e: cnt[e] for e in Events.Event}
-    listed = sorted(list(stats.items()), key=lambda pair: pair[1], reverse=True)
+    listed = sorted(
+        list(stats.items()), key=lambda pair: pair[1], reverse=True
+    )
     for e, c in listed:
         print(e, f"{c},({round(c/total, 8)})")
 

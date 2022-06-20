@@ -26,7 +26,14 @@ Undelegation = recordclass(
 
 Unval = recordclass(
     "Unval",
-    ["val", "unbonding_height", "unbonding_time", "on_hold", "op_id", "expired"],
+    [
+        "val",
+        "unbonding_height",
+        "unbonding_time",
+        "on_hold",
+        "op_id",
+        "expired",
+    ],
 )
 
 Vsc = recordclass("Vsc", ["vsc_id", "changes", "slash_acks"])
@@ -44,7 +51,9 @@ class Outbox:
     def create_packet(data, send_height):
         zero_timeout_height = ZERO_TIMEOUT_HEIGHT
         ccv_timeout_timestamp = CCV_TIMEOUT_TIMESTAMP
-        return Packet(zero_timeout_height, ccv_timeout_timestamp, data, send_height)
+        return Packet(
+            zero_timeout_height, ccv_timeout_timestamp, data, send_height
+        )
 
     def __init__(self, model, chain):
         self.m = model
@@ -55,7 +64,9 @@ class Outbox:
     def add(self, data):
         # send height is used to establish ordering
         # between blocks on different chains
-        self.fifo.append((Outbox.create_packet(data, self.m.h[self.chain]), 0))
+        self.fifo.append(
+            (Outbox.create_packet(data, self.m.h[self.chain]), 0)
+        )
 
     def is_empty(self):
         return 0 == len([p for p in self.fifo if 2 <= p[1]])
@@ -98,7 +109,12 @@ class Staking:
         # denominated in tokens, but use 1-1 exchange rate
         self.tokens = [x + 1 * TOKEN_SCALAR for x in self.delegation]
         # validator status
-        self.status = [Status.BONDED, Status.BONDED, Status.UNBONDED, Status.UNBONDED]
+        self.status = [
+            Status.BONDED,
+            Status.BONDED,
+            Status.UNBONDED,
+            Status.UNBONDED,
+        ]
         # unbonding delegations (undels)
         self.undelegationQ = []
         # unbonding validators (unvals)
@@ -139,7 +155,9 @@ class Staking:
         completed_undels = [e for e in expired_undels if not e.on_hold]
 
         if len(completed_undels) < len(expired_undels):
-            self.m.events.add(Events.Event.SOME_UNDELS_EXPIRED_BUT_NOT_COMPLETED)
+            self.m.events.add(
+                Events.Event.SOME_UNDELS_EXPIRED_BUT_NOT_COMPLETED
+            )
 
         self.undelegationQ = [
             e for e in self.undelegationQ if e not in completed_undels
@@ -178,14 +196,16 @@ class Staking:
         completed_unvals = [e for e in expired_unvals if not e.on_hold]
 
         if len(completed_unvals) < len(expired_unvals):
-            self.m.events.add(Events.Event.SOME_UNVALS_EXPIRED_BUT_NOT_COMPLETED)
+            self.m.events.add(
+                Events.Event.SOME_UNVALS_EXPIRED_BUT_NOT_COMPLETED
+            )
 
         for e in completed_unvals:
             self.status[e.val] = Status.UNBONDED
             self.m.events.add(Events.Event.COMPLETE_UNVAL_IN_ENDBLOCK)
 
         new_unvals = []
-        for i in set(old_vals) - set(new_vals):
+        for i in sorted(set(old_vals) - set(new_vals)):
             new_unvals.append(
                 Unval(
                     i,
@@ -200,7 +220,9 @@ class Staking:
             self.unbonding_op_id += 1
             self.status[i] = Status.UNBONDING
 
-        self.validatorQ = [e for e in self.validatorQ if e not in completed_unvals]
+        self.validatorQ = [
+            e for e in self.validatorQ if e not in completed_unvals
+        ]
         self.validatorQ.extend(new_unvals)
 
         self.changes = {}
@@ -208,9 +230,9 @@ class Staking:
             if self.tokens[i] != self.last_tokens[i]:
                 # if validator power changed
                 self.changes[i] = self.tokens[i]
-        for i in set(new_vals) - set(old_vals):
+        for i in sorted(set(new_vals) - set(old_vals)):
             self.changes[i] = self.tokens[i]
-        for i in set(old_vals) - set(new_vals):
+        for i in sorted(set(old_vals) - set(new_vals)):
             # if validator no longer bonded, set '0' power
             self.changes[i] = 0
 
@@ -308,7 +330,10 @@ class Staking:
     def unbonding_can_complete(self, op_id):
         if unval := [e for e in self.validatorQ if e.op_id == op_id]:
             e = unval[0]
-            if e.unbonding_height < self.m.h[P] and e.unbonding_time < self.m.t[P]:
+            if (
+                e.unbonding_height < self.m.h[P]
+                and e.unbonding_time < self.m.t[P]
+            ):
                 # Complete now
                 self.status[e.val] = Status.UNBONDED
                 self.validatorQ = [x for x in self.validatorQ if e != x]
@@ -322,7 +347,9 @@ class Staking:
             if e.completion_time <= self.m.t[P]:
                 # Complete now
                 self.delegator_tokens += e.balance
-                self.undelegationQ = [x for x in self.undelegationQ if e != x]
+                self.undelegationQ = [
+                    x for x in self.undelegationQ if e != x
+                ]
                 self.m.events.add(Events.Event.COMPLETE_UNDEL_NOW)
             else:
                 # Set on hold false to complete later
@@ -352,7 +379,9 @@ class CCVProvider:
 
         changes = self.m.staking.validator_changes()
 
-        if 0 < len(changes) or 0 < len(self.vsc_id_to_unbonding_op_ids[self.vsc_id]):
+        if 0 < len(changes) or 0 < len(
+            self.vsc_id_to_unbonding_op_ids[self.vsc_id]
+        ):
             if 0 == len(changes) and 0 < len(
                 self.vsc_id_to_unbonding_op_ids[self.vsc_id]
             ):
@@ -360,7 +389,9 @@ class CCVProvider:
             if 0 < len(self.downtime_slash_requests):
                 self.m.events.add(Events.Event.SEND_VSC_WITH_DOWNTIME_ACK)
             else:
-                self.m.events.add(Events.Event.SEND_VSC_WITHOUT_DOWNTIME_ACK)
+                self.m.events.add(
+                    Events.Event.SEND_VSC_WITHOUT_DOWNTIME_ACK
+                )
             data = Vsc(self.vsc_id, changes, self.downtime_slash_requests)
             self.downtime_slash_requests = []
             self.m.outbox[P].add(data)
@@ -384,7 +415,9 @@ class CCVProvider:
         if data.is_downtime:
             self.m.events.add(Events.Event.RECEIVE_DOWNTIME_SLASH_REQUEST)
         else:
-            self.m.events.add(Events.Event.RECEIVE_DOUBLE_SIGN_SLASH_REQUEST)
+            self.m.events.add(
+                Events.Event.RECEIVE_DOUBLE_SIGN_SLASH_REQUEST
+            )
 
         infraction_height = None
         if data.vsc_id == 0:
@@ -395,7 +428,9 @@ class CCVProvider:
         # in the spec, these are slashing module calls but they
         # pass straight through to the staking module
         factor = SLASH_DOWNTIME if data.is_downtime else SLASH_DOUBLESIGN
-        self.m.staking.slash(data.val, infraction_height, data.power, factor)
+        self.m.staking.slash(
+            data.val, infraction_height, data.power, factor
+        )
         self.m.staking.jail_until(data.val, self.m.t[P] + JAIL_SECONDS)
 
         if data.is_downtime:
@@ -416,7 +451,9 @@ class CCVConsumer:
         # Maps vsc_id to unbonding time (timestamp)
         self.maturing_vscs = {}
         # Maps val to bool
-        self.outstanding_downtime = {i: False for i in range(NUM_VALIDATORS)}
+        self.outstanding_downtime = {
+            i: False for i in range(NUM_VALIDATORS)
+        }
         # Maps val to power
         self.power = [None] * NUM_VALIDATORS
         for i in self.m.staking.last_vals:
@@ -428,7 +465,9 @@ class CCVConsumer:
     def end_block(self):
 
         matured = [
-            vsc_id for vsc_id, time in self.maturing_vscs.items() if time <= self.m.t[C]
+            vsc_id
+            for vsc_id, time in self.maturing_vscs.items()
+            if time <= self.m.t[C]
         ]
 
         if len(matured) < len(self.maturing_vscs.items()):
@@ -456,7 +495,9 @@ class CCVConsumer:
         for val, power in changes.items():
             self.power[val] = None
             if 0 < power:
-                self.m.events.add(Events.Event.CONSUMER_UPDATE_POWER_POSITIVE)
+                self.m.events.add(
+                    Events.Event.CONSUMER_UPDATE_POWER_POSITIVE
+                )
                 self.power[val] = power
             else:
                 self.m.events.add(Events.Event.CONSUMER_UPDATE_POWER_ZERO)
@@ -482,13 +523,19 @@ class CCVConsumer:
             self.m.events.add(Events.Event.RECEIVE_DOWNTIME_SLASH_ACK)
             self.outstanding_downtime[val] = False
 
-    def send_slash_request(self, val, power, infraction_height, is_downtime):
+    def send_slash_request(
+        self, val, power, infraction_height, is_downtime
+    ):
 
         if is_downtime and self.outstanding_downtime[val]:
-            self.m.events.add(Events.Event.DOWNTIME_SLASH_REQUEST_OUTSTANDING)
+            self.m.events.add(
+                Events.Event.DOWNTIME_SLASH_REQUEST_OUTSTANDING
+            )
             return
 
-        data = Slash(val, power, self.h_to_vsc_id[infraction_height], is_downtime)
+        data = Slash(
+            val, power, self.h_to_vsc_id[infraction_height], is_downtime
+        )
         self.m.outbox[C].add(data)
         if is_downtime:
             self.m.events.add(Events.Event.SEND_DOWNTIME_SLASH_REQUEST)
@@ -544,6 +591,12 @@ class Model:
                 {
                     "tokens": self.staking.tokens,
                     "undelegationQ": self.staking.undelegationQ,
+                    "validatorQ": self.staking.validatorQ,
+                    "outbox": {
+                        P: self.outbox[P].fifo,
+                        C: self.outbox[C].fifo,
+                    },
+                    "status": self.staking.status,
                     "jailed": self.staking.jailed,
                     "delegator_tokens": self.staking.delegator_tokens,
                     "power": self.ccv_c.power,
@@ -568,11 +621,11 @@ class Model:
 
     def delegate(self, val, amt):
         self.idempotent_begin_block(P)
-        return self.staking.delegate(val, amt)
+        self.staking.delegate(val, amt)
 
     def undelegate(self, val, amt):
         self.idempotent_begin_block(P)
-        return self.staking.undelegate(val, amt)
+        self.staking.undelegate(val, amt)
 
     def end_block(self, chain):
         self.idempotent_begin_block(chain)
@@ -602,11 +655,15 @@ class Model:
         self.idempotent_begin_block(chain)
         if chain == P:
             for p in self.outbox[C].consume():
-                self.blocks.partial_order.deliver(P, p.send_height, self.h[P])
+                self.blocks.partial_order.deliver(
+                    P, p.send_height, self.h[P]
+                )
                 self.ccv_p.on_receive(p.data)
         if chain == C:
             for p in self.outbox[P].consume():
-                self.blocks.partial_order.deliver(C, p.send_height, self.h[C])
+                self.blocks.partial_order.deliver(
+                    C, p.send_height, self.h[C]
+                )
                 self.ccv_c.on_receive(p.data)
 
     def provider_slash(self, val, infraction_height, power, factor):
@@ -615,4 +672,6 @@ class Model:
 
     def consumer_slash(self, val, power, infraction_height, is_downtime):
         self.idempotent_begin_block(C)
-        self.ccv_c.send_slash_request(val, power, infraction_height, is_downtime)
+        self.ccv_c.send_slash_request(
+            val, power, infraction_height, is_downtime
+        )

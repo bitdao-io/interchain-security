@@ -73,8 +73,6 @@ def select():
             with open(join(PATH, fn), "w") as fd_w:
                 fd_w.write(json.dumps(obj, indent=2))
 
-    sys.exit(1)
-
 
 def combine():
     def do(dir, fnout):
@@ -83,37 +81,20 @@ def combine():
         files = [f for f in listdir(PATH) if isfile(join(PATH, f))]
 
         ret = []
-        for fn in files:
+        print(f"There are {len(files)} files")
+        for i, fn in enumerate(files):
             fp = join(PATH, fn)
             obj = None
             with open(fp, "r") as fd:
                 obj = json.loads(fd.read())
             ret.extend(obj)
+            if i % 1000 == 0:
+                print(f"Finished reading {i} files")
+            if i == 8000:
+                break
 
         with open(f"{fnout}.json", "w") as fd:
             fd.write(json.dumps(ret, indent=2))
 
-    do("traces_covering/", "traces_covering")
-
-
-def foobar():
-    def do(dir):
-
-        # PATH = dir
-        # files = [f for f in listdir(PATH) if isfile(join(PATH, f))]
-        PATH = ""
-        files = ["traces_covering.json"]
-
-        events = set()
-        for fn in files:
-            fp = join(PATH, fn)
-            obj = None
-            with open(fp, "r") as fd:
-                obj = json.loads(fd.read())
-            events.update(obj[0]["events"])
-
-        print(len(events))
-        for e in events:
-            print(e)
-
-    do("traces_covering/")
+    # do("traces_covering/", "traces_covering")
+    do("traces/", "traces_all")

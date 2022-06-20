@@ -20,8 +20,12 @@ class Events:
         RECEIVE_DOWNTIME_SLASH_REQUEST = "receive_downtime_slash_request"
         RECEIVE_DOWNTIME_SLASH_ACK = "receive_downtime_slash_ack"
         SEND_DOUBLE_SIGN_SLASH_REQUEST = "send_double_sign_slash_request"
-        RECEIVE_DOUBLE_SIGN_SLASH_REQUEST = "receive_double_sign_slash_request"
-        DOWNTIME_SLASH_REQUEST_OUTSTANDING = "downtime_slash_request_outstanding"
+        RECEIVE_DOUBLE_SIGN_SLASH_REQUEST = (
+            "receive_double_sign_slash_request"
+        )
+        DOWNTIME_SLASH_REQUEST_OUTSTANDING = (
+            "downtime_slash_request_outstanding"
+        )
         CONSUMER_UPDATE_POWER_POSITIVE = "consumer_update_power_positive"
         CONSUMER_UPDATE_POWER_ZERO = "consumer_update_power_zero"
         CONSUMER_NO_PENDING_CHANGES = "consumer_no_pending_changes"
@@ -30,8 +34,12 @@ class Events:
         SEND_VSC_NOT_BECAUSE_CHANGE = "send_vsc_not_because_change"
         SEND_VSC_WITH_DOWNTIME_ACK = "send_vsc_with_downtime_ack"
         SEND_VSC_WITHOUT_DOWNTIME_ACK = "send_vsc_without_downtime_ack"
-        SOME_UNDELS_EXPIRED_BUT_NOT_COMPLETED = "some_undels_expired_but_not_completed"
-        SOME_UNVALS_EXPIRED_BUT_NOT_COMPLETED = "some_unvals_expired_but_not_completed"
+        SOME_UNDELS_EXPIRED_BUT_NOT_COMPLETED = (
+            "some_undels_expired_but_not_completed"
+        )
+        SOME_UNVALS_EXPIRED_BUT_NOT_COMPLETED = (
+            "some_unvals_expired_but_not_completed"
+        )
 
     def __init__(self):
         self.events = []

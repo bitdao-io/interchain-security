@@ -13,7 +13,10 @@ class PartialOrder:
         h = send_height
 
         if receive_height in self.greatest_predecessor[receiving_chain]:
-            h = max(self.greatest_predecessor[receiving_chain][receive_height], h)
+            h = max(
+                self.greatest_predecessor[receiving_chain][receive_height],
+                h,
+            )
         self.greatest_predecessor[receiving_chain][receive_height] = h
 
         sending_chain = {P: C, C: P}[receiving_chain]
