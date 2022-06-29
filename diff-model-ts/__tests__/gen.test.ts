@@ -1,6 +1,5 @@
 import { Model, Undelegation, Unval } from '../src/model.js';
 import { Events } from '../src/events.js';
-import _ from 'underscore';
 import * as fs from 'fs';
 
 describe('gen', () => {

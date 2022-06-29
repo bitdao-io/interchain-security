@@ -183,3 +183,11 @@ function bondBasedConsumerVotingPower(blockz: Blocks): boolean {
     true,
   );
 }
+
+export {
+  PartialOrder,
+  Block,
+  Blocks,
+  stakingWithoutSlashing,
+  bondBasedConsumerVotingPower,
+};

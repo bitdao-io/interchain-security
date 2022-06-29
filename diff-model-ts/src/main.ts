@@ -1,1 +1,3 @@
-console.log(`ran main`);
+import { gen } from './gen.js';
+console.log(`running  main`);
+gen();
