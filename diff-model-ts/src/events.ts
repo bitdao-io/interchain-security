@@ -1,5 +1,3 @@
-import _ from 'underscore';
-
 enum Event {
   REBOND_UNVAL = 'rebond_unval',
   COMPLETE_UNVAL_IN_ENDBLOCK = 'complete_unval_in_endblock',

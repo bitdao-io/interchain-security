@@ -18,11 +18,15 @@ import {
 import _ from 'underscore';
 import { Model } from './model.js';
 import { Events } from './events.js';
+import { strict as assert } from 'node:assert';
 
-function mkdirIfNotExist(dir) {
+function forceMakeEmptyDir(dir) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir);
+    return;
   }
+  fs.rmdirSync(dir, { recursive: true });
+  forceMakeEmptyDir(dir);
 }
 
 interface Action {
@@ -53,26 +57,26 @@ type ProviderSlash = {
   kind: string;
   val: number;
   power: number;
-  height: number;
+  infractionHeight: number;
   factor: number;
 };
 type ConsumerSlash = {
   kind: string;
   val: number;
   power: number;
-  height: number;
+  infractionHeight: number;
   isDowntime: number;
 };
 
 function weightedRandomKey(distr) {
-  const x =
-    Math.random() * _.reduce(_.values(distr), (sum, y) => sum + y, 0);
+  const scalar = _.reduce(_.values(distr), (sum, y) => sum + y, 0);
+  const x = Math.random() * scalar;
   const pairs = _.pairs(distr);
   let i = 0;
   let cum = 0;
-  while (i < pairs.length - 1 || cum + pairs[i][1] < x) {
-    i += 1;
+  while (i < pairs.length - 1 && cum + pairs[i][1] < x) {
     cum += pairs[i][1];
+    i += 1;
   }
   return pairs[i][0];
 }
@@ -94,8 +98,8 @@ class ActionGenerator {
       this.candidateUndelegate(),
       this.candidateJumpNBlocks(),
       this.candidateDeliver(),
-      this.candidateProviderSlash(),
-      this.candidateConsumerSlash(),
+      // this.candidateProviderSlash(),
+      // this.candidateConsumerSlash(),
     ]);
     const possible = _.uniq(templates.map((a) => a.kind));
     const distr = _.pick(
@@ -130,6 +134,7 @@ class ActionGenerator {
     if (kind === 'ConsumerSlash') {
       return this.selectConsumerSlash(a);
     }
+    throw 'invalid kind';
   };
 
   candidateDelegate = (): Action[] => {
@@ -195,15 +200,16 @@ class ActionGenerator {
     return { ...a, amt: _.random(1, 5) * TOKEN_SCALAR };
   };
 
-  selectUnelegate = (a): Undelegate => {
+  selectUndelegate = (a): Undelegate => {
     this.undelegatedSinceBlock[a.val] = true;
     return { ...a, amt: _.random(1, 5) * TOKEN_SCALAR };
   };
 
   selectJumpNBlocks = (a): JumpNBlocks => {
+    const chains = _.sample([[P], [C], [P, C]]); //TODO:
     a = {
       ...a,
-      chains: [], // TODO:
+      chains,
       n: _.sample([1, 6]),
       secondsPerBlock: BLOCK_SECONDS,
     };
@@ -217,22 +223,22 @@ class ActionGenerator {
     return a;
   };
   selectProviderSlash = (a): ProviderSlash => {
-    // TODO:
+    // TODO: can only happen with evidence, power can't be random
     this.jailed[a.val] = true;
     return {
       ...a,
       power: _.random(1, 6) * TOKEN_SCALAR,
-      height: Math.floor(Math.random() * this.model.h[P]),
+      infractionHeight: Math.floor(Math.random() * this.model.h[P]),
       factor: _.sample([SLASH_DOUBLESIGN, SLASH_DOWNTIME]),
     };
   };
   selectConsumerSlash = (a): ConsumerSlash => {
-    // TODO:
+    // TODO: can only happen with evidence, power can't be random
     this.jailed[a.val] = true;
     return {
       ...a,
       power: _.random(1, 6) * TOKEN_SCALAR,
-      height: Math.floor(Math.random() * this.model.h[C]),
+      infractionHeight: Math.floor(Math.random() * this.model.h[C]),
       isDowntime: _.sample([true, false]),
     };
   };
@@ -249,41 +255,54 @@ class Trace {
         return { action: a, consequence: c };
       },
     );
-    const json = JSON.stringify({ transitions });
-    fs.writeFile(fn, json, 'utf8', (err) => {
-      if (err) throw err;
-    });
+    const json = JSON.stringify({ transitions }, null, 4);
+    this.write(fn, json);
+  };
+  write = (fn, content) => {
+    // fs.writeFile(fn, content, 'utf8', (err) => {
+    // if (err) throw err;
+    // });
+    fs.writeFileSync(fn, content);
   };
 }
 
-function doAction(model, a: Action) {
-  if (a.kind === 'Delegate') {
-    model.delegate(a);
+function doAction(model, action: Action) {
+  const kind = action.kind;
+  if (kind === 'Delegate') {
+    const a = action as Delegate;
+    model.delegate(a.val, a.amt);
   }
-  if (a.kind === 'Undelegate') {
-    model.undelegate(a);
+  if (kind === 'Undelegate') {
+    const a = action as Undelegate;
+    model.undelegate(a.val, a.amt);
   }
-  if (a.kind === 'JumpNBlocks') {
-    model.jumpNBlocks(a);
+  if (kind === 'JumpNBlocks') {
+    const a = action as JumpNBlocks;
+    model.jumpNBlocks(a.n, a.chains, a.secondsPerBlock);
   }
-  if (a.kind === 'Deliver') {
+  if (kind === 'Deliver') {
+    const a = action as Deliver;
     model.deliver(a);
   }
-  if (a.kind === 'ProviderSlash') {
-    model.providerSlash(a);
+  if (kind === 'ProviderSlash') {
+    const a = action as ProviderSlash;
+    model.providerSlash(a.val, a.infractionHeight, a.power, a.factor);
   }
-  if (a.kind === 'ConsumerSlash') {
-    model.consumerSlash(a);
+  if (kind === 'ConsumerSlash') {
+    const a = action as ConsumerSlash;
+    model.consumerSlash(a.val, a.power, a.infractionHeight, a.isDowntime);
   }
 }
 
 function gen() {
-  const GOAL_TIME_MINS = 5;
+  const outerEnd = timeSpan();
+  //
+  const GOAL_TIME_MINS = 1;
   const goalTimeMillis = GOAL_TIME_MINS * 60 * 1000;
   const NUM_ACTIONS = 40;
   const DIR = 'traces/';
-  mkdirIfNotExist(DIR);
-  let numRuns = 1000;
+  forceMakeEmptyDir(DIR);
+  let numRuns = 1000000000000;
   let elapsed = 0;
   let i = 0;
   while (i < numRuns) {
@@ -301,14 +320,18 @@ function gen() {
       trace.actions.push(a);
       doAction(model, a);
       trace.consequences.push(model.snapshot());
-      // todo, check properties
-      stakingWithoutSlashing(blocks);
-      bondBasedConsumerVotingPower(blocks);
-      trace.dump(`${DIR}trace_${i}.json`);
+      assert.ok(stakingWithoutSlashing(blocks));
+      assert.ok(bondBasedConsumerVotingPower(blocks));
     }
+    trace.dump(`${DIR}trace_${i}.json`);
     ////////////////////////
     elapsed = end.rounded();
+    if (i % 1000 === 0) {
+      console.log(`finish ${i}`);
+    }
   }
+  //
+  console.log(Math.floor(outerEnd.seconds() / 60));
 }
 
 export { gen };

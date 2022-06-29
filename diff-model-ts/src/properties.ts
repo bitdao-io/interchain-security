@@ -29,7 +29,7 @@ class PartialOrder {
     this.leastSucc[sendingChain].set(sendHeight, h);
   };
   getGreatestPred = (chain, height) => {
-    const it = this.getGreatestPred[chain].keys();
+    const it = this.greatestPred[chain].keys();
     let bestH = -1;
     let bestV = -1;
     let result = it.next();
@@ -37,7 +37,7 @@ class PartialOrder {
       const h = result.value;
       if (bestH < h && h <= height) {
         bestH = h;
-        bestV = this.getGreatestPred[chain].get(h);
+        bestV = this.greatestPred[chain].get(h);
       }
       result = it.next();
     }
@@ -47,7 +47,7 @@ class PartialOrder {
     return bestV;
   };
   getLeastSucc = (chain, height) => {
-    const it = this.getLeastSucc[chain].keys();
+    const it = this.leastSucc[chain].keys();
     let bestH = 100000000000000;
     let bestV = -1;
     let result = it.next();
@@ -55,7 +55,7 @@ class PartialOrder {
       const h = result.value;
       if (h < bestH && height <= h) {
         bestH = h;
-        bestV = this.getLeastSucc[chain].get(h);
+        bestV = this.leastSucc[chain].get(h);
       }
       result = it.next();
     }

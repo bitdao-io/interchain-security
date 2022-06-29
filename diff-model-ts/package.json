@@ -38,8 +38,10 @@
   "author": "Jakub Synowiec <jsynowiec@users.noreply.github.com>",
   "license": "Apache-2.0",
   "dependencies": {
+    "@types/clone-deep": "^4.0.1",
     "@types/time-span": "^3.0.1",
     "@types/underscore": "^1.11.4",
+    "clone-deep": "^4.0.1",
     "time-span": "^5.1.0",
     "tslib": "~2.4",
     "underscore": "^1.13.4"

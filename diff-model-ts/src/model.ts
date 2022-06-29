@@ -4,6 +4,8 @@ Matches https://github.com/cosmos/ibc/commit/76f25771b42f5c54415b310632751d58501
 
 import _ from 'underscore';
 import { Event } from './events.js';
+import { Blocks } from './properties.js';
+import cloneDeep from 'clone-deep';
 
 import {
   P,
@@ -555,7 +557,7 @@ class Model {
   events = undefined;
   mustBeginBlock = {};
 
-  constructor(blocks, events) {
+  constructor(blocks: Blocks, events) {
     this.outbox[P] = new Outbox(this, P);
     this.outbox[C] = new Outbox(this, C);
     this.staking = new Staking(this);
@@ -563,17 +565,28 @@ class Model {
     this.ccvC = new CCVConsumer(this);
     this.blocks = blocks;
     this.events = events;
-    // this.blocks.partial_order.deliver(C,0,0)
-    // this.blocks.commit_block(P, this.snapshot())
-    // this.blocks.commit_block(C, this.snapshot())
+    this.blocks.partialOrder.deliver(C, 0, 0);
+    this.blocks.commitBlock(P, this.snapshot());
+    this.blocks.commitBlock(C, this.snapshot());
     this.increaseSeconds(BLOCK_SECONDS);
     this.mustBeginBlock[P] = true;
     this.mustBeginBlock[C] = true;
   }
   snapshot = () => {
-    //TODO:
+    return cloneDeep({
+      tokens: this.staking.tokens,
+      undelegationQ: this.staking.undelegationQ,
+      validatorQ: this.staking.validatorQ,
+      status: this.staking.status,
+      jailed: this.staking.jailed,
+      delegatorTokens: this.staking.delegatorTokens,
+      outbox: { P: this.outbox[P].fifo, C: this.outbox[C].fifo },
+      power: this.ccvC.power,
+      h: this.h,
+      t: this.t,
+    });
   };
-  hasUndelivered = (chain) => {
+  hasUndelivered = (chain): boolean => {
     return !this.outbox[chain === P ? C : P].isEmpty();
   };
   idempotentBeginBlock = (chain) => {
@@ -607,7 +620,7 @@ class Model {
       this.ccvC.endBlock();
     }
     this.outbox[chain].commit();
-    // this.blocks.commit_block(chain,this.snapshot())
+    this.blocks.commitBlock(chain, this.snapshot());
     this.mustBeginBlock[chain] = true;
   };
   increaseSeconds = (seconds) => {
@@ -623,13 +636,13 @@ class Model {
     this.idempotentBeginBlock(chain);
     if (chain === P) {
       this.outbox[C].consume().forEach((p) => {
-        // this.blocks.partial_order.deliver(P, p.sendHeight, this.h[P]);
+        this.blocks.partialOrder.deliver(P, p.sendHeight, this.h[P]);
         this.ccvP.onReceive(p.data);
       });
     }
     if (chain === C) {
       this.outbox[P].consume().forEach((p) => {
-        // this.blocks.partial_order.deliver(C, p.sendHeight, this.h[C])
+        this.blocks.partialOrder.deliver(C, p.sendHeight, this.h[C]);
         this.ccvC.onReceive(p.data);
       });
     }
