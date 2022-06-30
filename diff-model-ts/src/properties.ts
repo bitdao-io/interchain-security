@@ -141,7 +141,7 @@ function bondBasedConsumerVotingPower(blockz: Blocks): boolean {
   function inner(hc) {
     const hp = partialOrder.getGreatestPred(C, hc);
     if (hp === undefined) {
-      assert(false);
+      assert(false, 'faulty inner');
     }
     function getHC_(tsHC) {
       const heights = Array.from(blocks[C].keys()).sort();

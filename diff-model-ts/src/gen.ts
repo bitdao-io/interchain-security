@@ -104,18 +104,12 @@ class ActionGenerator {
     const possible = _.uniq(templates.map((a) => a.kind));
     const distr = _.pick(
       {
-        // Delegate: 0.03,
-        // Undelegate: 0.03,
-        // JumpNBlocks: 0.45,
-        // Deliver: 0.45,
-        // ProviderSlash: 0.02,
-        // ConsumerSlash: 0.02,
-        Delegate: 0.16,
-        Undelegate: 0.16,
-        JumpNBlocks: 0.16,
-        Deliver: 0.2,
-        ProviderSlash: 0.16,
-        ConsumerSlash: 0.16,
+        Delegate: 0.03,
+        Undelegate: 0.03,
+        JumpNBlocks: 0.45,
+        Deliver: 0.45,
+        ProviderSlash: 0.02,
+        ConsumerSlash: 0.02,
       },
       ...possible,
     );
@@ -208,7 +202,7 @@ class ActionGenerator {
 
   selectUndelegate = (a): Undelegate => {
     this.undelegatedSinceBlock[a.val] = true;
-    return { ...a, amt: _.random(1, 5) * TOKEN_SCALAR };
+    return { ...a, amt: _.random(1, 4) * TOKEN_SCALAR };
   };
 
   selectJumpNBlocks = (a): JumpNBlocks => {
@@ -288,7 +282,7 @@ function doAction(model, action: Action) {
   }
   if (kind === 'Deliver') {
     const a = action as Deliver;
-    model.deliver(a);
+    model.deliver(a.chain);
   }
   if (kind === 'ProviderSlash') {
     const a = action as ProviderSlash;
@@ -298,11 +292,26 @@ function doAction(model, action: Action) {
     const a = action as ConsumerSlash;
     model.consumerSlash(a.val, a.power, a.infractionHeight, a.isDowntime);
   }
+  throw 'wrong kind';
+}
+
+function writeEventData(allEvents, fn) {
+  const eventCnt = _.countBy(allEvents, _.identity);
+  for (const evt in Event) {
+    const evtName = Event[evt];
+    if (!_.has(eventCnt, evtName)) {
+      eventCnt[evtName] = 0;
+    }
+  }
+  const cnts = _.chain(eventCnt)
+    .pairs()
+    .sortBy((pair) => -pair[1]);
+
+  fs.writeFileSync(`cnts${fn}.json`, JSON.stringify(cnts));
 }
 
 function gen() {
   const outerEnd = timeSpan();
-  //
   const GOAL_TIME_MINS = 5;
   const goalTimeMillis = GOAL_TIME_MINS * 60 * 1000;
   const NUM_ACTIONS = 40;
@@ -324,7 +333,6 @@ function gen() {
     const trace = new Trace();
     for (let j = 0; j < NUM_ACTIONS; j++) {
       const a = actionGenerator.get();
-      // console.log(JSON.stringify(a));
       trace.actions.push(a);
       doAction(model, a);
       trace.consequences.push(model.snapshot());
@@ -344,20 +352,51 @@ function gen() {
       );
     }
   }
-  const eventCnt = _.countBy(allEvents, _.identity);
-  for (const evt in Event) {
-    const evtName = Event[evt];
-    if (!_.has(eventCnt, evtName)) {
-      eventCnt[evtName] = 0;
-    }
-  }
-  const cnts = _.chain(eventCnt)
-    .pairs()
-    .sortBy((pair) => -pair[1]);
-  cnts.forEach(([evtName, cnt]) => console.log(`${evtName}, ${cnt}`));
-
   console.log(`ran ${Math.floor(outerEnd.seconds() / 60)} mins`);
-  fs.writeFileSync('cnts.json', JSON.stringify(cnts));
+  writeEventData(allEvents, 'Gen');
 }
 
-export { gen };
+function fromTraces(
+  fn,
+  compare: undefined | ((model: Model, con) => void),
+) {
+  const raw = fs.readFileSync(`${fn}.json`, 'utf-8');
+  const json = JSON.parse(raw);
+
+  writeEventData(json.map((trace) => trace.events).flat(), 'PyCovering');
+
+  const allEvents = [];
+  json.forEach(({ transitions }) => {
+    const events = [];
+    const model = new Model(new Blocks(), events);
+    transitions.forEach(([a, con]) => {
+      switch (a.kind) {
+        case 'Delegate':
+          model.delegate(a.val, a.amt);
+          break;
+        case 'Undelegate':
+          model.undelegate(a.val, a.amt);
+          break;
+        case 'JumpNBlocks':
+          model.jumpNBlocks(a.n, a.chains, a.seconds_per_block);
+          break;
+        case 'Deliver':
+          model.deliver(a.chain);
+          break;
+        case 'ProviderSlash':
+          model.providerSlash(a.val, a.height, a.power, a.factor);
+          break;
+        case 'ConsumerSlash':
+          model.consumerSlash(a.val, a.power, a.height, a.is_downtime);
+          break;
+      }
+      if (compare) {
+        compare(model, con);
+      }
+    });
+    allEvents.push(...events);
+  });
+  writeEventData(allEvents, 'TsCovering');
+}
+
+export { gen, fromTraces };

@@ -180,7 +180,7 @@ class Staking {
     this.undelegationQ = this.undelegationQ.filter(
       (e: Undelegation) => !completedUndels.includes(e),
     );
-    if (completedUndels) {
+    if (0 < completedUndels.length) {
       this.m.events.push(Event.COMPLETE_UNDEL_IN_ENDBLOCK);
     }
     this.delegatorTokens += completedUndels.reduce(
@@ -383,11 +383,11 @@ class CCVProvider {
     const hasOps =
       this.vscIDtoOpIDs.has(this.vscID) &&
       0 < this.vscIDtoOpIDs.get(this.vscID).length;
-    if (changes || hasOps) {
-      if (!changes && hasOps) {
+    if (0 < changes.length || hasOps) {
+      if (0 === changes.length) {
         this.m.events.push(Event.SEND_VSC_NOT_BECAUSE_CHANGE);
       }
-      if (this.downtimeSlashAcks) {
+      if (0 < this.downtimeSlashAcks.length) {
         this.m.events.push(Event.SEND_VSC_WITH_DOWNTIME_ACK);
       } else {
         this.m.events.push(Event.SEND_VSC_WITHOUT_DOWNTIME_ACK);
@@ -519,7 +519,7 @@ class CCVConsumer {
     });
   };
   sendSlashRequest = (val, power, infractionHeight, isDowntime) => {
-    if (isDowntime && this.outstandingDowntime[val]) {
+    if (isDowntime && 0 < this.outstandingDowntime[val].length) {
       this.m.events.push(Event.DOWNTIME_SLASH_REQUEST_OUTSTANDING);
       return;
     }
@@ -602,11 +602,11 @@ class Model {
       }
     }
   };
-  delegate = (val, amt) => {
+  delegate = (val: number, amt: number) => {
     this.idempotentBeginBlock(P);
     this.staking.delegate(val, amt);
   };
-  undelegate = (val, amt) => {
+  undelegate = (val: number, amt: number) => {
     this.idempotentBeginBlock(P);
     this.staking.undelegate(val, amt);
   };
@@ -626,13 +626,17 @@ class Model {
   increaseSeconds = (seconds) => {
     this.T += seconds;
   };
-  jumpNBlocks = (n, chains, secondsPerBlock) => {
+  jumpNBlocks = (
+    n: number,
+    chains: string[],
+    secondsPerBlock: number,
+  ) => {
     for (let i = 0; i < n; i++) {
       chains.forEach(this.endBlock);
       this.increaseSeconds(secondsPerBlock);
     }
   };
-  deliver = (chain) => {
+  deliver = (chain: string) => {
     this.idempotentBeginBlock(chain);
     if (chain === P) {
       this.outbox[C].consume().forEach((p) => {
@@ -647,11 +651,21 @@ class Model {
       });
     }
   };
-  providerSlash = (val, infractionHeight, power, factor) => {
+  providerSlash = (
+    val: number,
+    infractionHeight: number,
+    power: number,
+    factor: number,
+  ) => {
     this.idempotentBeginBlock(P);
     this.staking.slash(val, infractionHeight, power, factor);
   };
-  consumerSlash = (val, power, infractionHeight, isDowntime) => {
+  consumerSlash = (
+    val: number,
+    power: number,
+    infractionHeight: number,
+    isDowntime: boolean,
+  ) => {
     this.idempotentBeginBlock(C);
     this.ccvC.sendSlashRequest(val, power, infractionHeight, isDowntime);
   };
