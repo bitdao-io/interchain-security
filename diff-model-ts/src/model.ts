@@ -175,13 +175,13 @@ class Staking {
     expiredUndels.forEach((e: Undelegation) => (e.expired = true));
     const completedUndels = expiredUndels.filter((e) => !e.onHold);
     if (completedUndels.length < expiredUndels.length) {
-      this.m.events.add(Event.SOME_UNDELS_EXPIRED_BUT_NOT_COMPLETED);
+      this.m.events.push(Event.SOME_UNDELS_EXPIRED_BUT_NOT_COMPLETED);
     }
     this.undelegationQ = this.undelegationQ.filter(
       (e: Undelegation) => !completedUndels.includes(e),
     );
     if (completedUndels) {
-      this.m.events.add(Event.COMPLETE_UNDEL_IN_ENDBLOCK);
+      this.m.events.push(Event.COMPLETE_UNDEL_IN_ENDBLOCK);
     }
     this.delegatorTokens += completedUndels.reduce(
       (x, e) => x + e.balance,
@@ -195,7 +195,7 @@ class Staking {
       const before = this.validatorQ.length;
       this.validatorQ = this.validatorQ.filter((e) => e.val != i);
       if (this.validatorQ.length != before) {
-        this.m.events.add(Event.REBOND_UNVAL);
+        this.m.events.push(Event.REBOND_UNVAL);
       }
     });
     const expiredUnvals = this.validatorQ.filter(
@@ -209,11 +209,11 @@ class Staking {
       (e) => !e.onHold,
     );
     if (completedUnvals.length < expiredUnvals.length) {
-      this.m.events.add(Event.SOME_UNVALS_EXPIRED_BUT_NOT_COMPLETED);
+      this.m.events.push(Event.SOME_UNVALS_EXPIRED_BUT_NOT_COMPLETED);
     }
     completedUnvals.forEach((e: Unval) => {
       this.status[e.val] = Status.UNBONDED;
-      this.m.events.add(Event.COMPLETE_UNVAL_IN_ENDBLOCK);
+      this.m.events.push(Event.COMPLETE_UNVAL_IN_ENDBLOCK);
     });
     const newUnvals = [];
     _.difference(oldVals, newVals)
@@ -261,7 +261,7 @@ class Staking {
 
   delegate = (val, amt) => {
     if (this.tokens[val] === 0 && 0 < this.shares(val)) {
-      this.m.events.add(Event.INVALID_EX_RATE);
+      this.m.events.push(Event.INVALID_EX_RATE);
       return;
     }
     const issuedShares = Math.floor(
@@ -273,14 +273,14 @@ class Staking {
   };
   undelegate = (val, amt) => {
     if (this.tokens[val] < 1) {
-      this.m.events.add(Event.INSUFFICIENT_TOKENS);
+      this.m.events.push(Event.INSUFFICIENT_TOKENS);
       return;
     }
     const shares = Math.floor(
       (this.shares(val) * amt) / this.tokens[val],
     );
     if (this.delegation[val] < shares) {
-      this.m.events.add(Event.INSUFFICIENT_SHARES);
+      this.m.events.push(Event.INSUFFICIENT_SHARES);
       return;
     }
     const issuedTokens = Math.floor(
@@ -313,7 +313,7 @@ class Staking {
     let remaining = amt;
     if (infractionHeight < this.m.h[P]) {
       ubds.forEach((e) => {
-        this.m.events.add(Event.SLASH_UNDEL);
+        this.m.events.push(Event.SLASH_UNDEL);
         const slashed = Math.floor(factor * e.initialBalance);
         remaining -= slashed;
         e.balance = Math.max(0, e.balance - slashed);
@@ -322,12 +322,12 @@ class Staking {
     const toBurn = Math.min(Math.max(remaining, 0), this.tokens[val]);
     this.tokens[val] -= toBurn;
     if (0 < toBurn) {
-      this.m.events.add(Event.SLASH_VAL);
+      this.m.events.push(Event.SLASH_VAL);
     }
   };
   jailUntil = (val, timestamp) => {
     this.jailed[val] = timestamp;
-    this.m.events.add(Event.JAIL);
+    this.m.events.push(Event.JAIL);
   };
   shares = (val) => {
     return this.delegation[val] + 1 * TOKEN_SCALAR;
@@ -342,10 +342,10 @@ class Staking {
         ) {
           this.status[e.val] = Status.UNBONDED;
           this.validatorQ = this.validatorQ.filter((x) => x !== e);
-          this.m.events.add(Event.COMPLETE_UNVAL_NOW);
+          this.m.events.push(Event.COMPLETE_UNVAL_NOW);
         } else {
           e.onHold = false;
-          this.m.events.add(Event.SET_UNVAL_HOLD_FALSE);
+          this.m.events.push(Event.SET_UNVAL_HOLD_FALSE);
         }
         return;
       }
@@ -355,10 +355,10 @@ class Staking {
       if (e.completionTime <= this.m.t[P]) {
         this.delegatorTokens += e.balance;
         this.undelegationQ = this.undelegationQ.filter((x) => x !== e);
-        this.m.events.add(Event.COMPLETE_UNDEL_NOW);
+        this.m.events.push(Event.COMPLETE_UNDEL_NOW);
       } else {
         e.onHold = false;
-        this.m.events.add(Event.SET_UNDEL_HOLD_FALSE);
+        this.m.events.push(Event.SET_UNDEL_HOLD_FALSE);
       }
     }
   };
@@ -385,12 +385,12 @@ class CCVProvider {
       0 < this.vscIDtoOpIDs.get(this.vscID).length;
     if (changes || hasOps) {
       if (!changes && hasOps) {
-        this.m.events.add(Event.SEND_VSC_NOT_BECAUSE_CHANGE);
+        this.m.events.push(Event.SEND_VSC_NOT_BECAUSE_CHANGE);
       }
       if (this.downtimeSlashAcks) {
-        this.m.events.add(Event.SEND_VSC_WITH_DOWNTIME_ACK);
+        this.m.events.push(Event.SEND_VSC_WITH_DOWNTIME_ACK);
       } else {
-        this.m.events.add(Event.SEND_VSC_WITHOUT_DOWNTIME_ACK);
+        this.m.events.push(Event.SEND_VSC_WITHOUT_DOWNTIME_ACK);
       }
       const data: Vsc = {
         vscID: this.vscID,
@@ -421,9 +421,9 @@ class CCVProvider {
   };
   onReceiveSlash = (data: Slash) => {
     if (data.isDowntime) {
-      this.m.events.add(Event.RECEIVE_DOWNTIME_SLASH_REQUEST);
+      this.m.events.push(Event.RECEIVE_DOWNTIME_SLASH_REQUEST);
     } else {
-      this.m.events.add(Event.RECEIVE_DOUBLE_SIGN_SLASH_REQUEST);
+      this.m.events.push(Event.RECEIVE_DOUBLE_SIGN_SLASH_REQUEST);
     }
 
     const infractionHeight =
@@ -472,16 +472,16 @@ class CCVConsumer {
       return ret;
     })();
     if (matured.length < this.maturingVscs.size) {
-      this.m.events.add(Event.CONSUMER_NOT_ALL_MATURED);
+      this.m.events.push(Event.CONSUMER_NOT_ALL_MATURED);
     }
     matured.forEach((vscID) => {
       const data: VscMatured = { vscID };
-      this.m.events.add(Event.CONSUMER_SEND_MATURATION);
+      this.m.events.push(Event.CONSUMER_SEND_MATURATION);
       this.m.outbox[C].add(data);
       this.maturingVscs.delete(vscID);
     });
     if (this.pendingChanges.length < 1) {
-      this.m.events.add(Event.CONSUMER_NO_PENDING_CHANGES);
+      this.m.events.push(Event.CONSUMER_NO_PENDING_CHANGES);
       return;
     }
     const changes = (() => {
@@ -497,10 +497,10 @@ class CCVConsumer {
     changes.forEach((power, val) => {
       this.power[val] = undefined;
       if (0 < power) {
-        this.m.events.add(Event.CONSUMER_UPDATE_POWER_POSITIVE);
+        this.m.events.push(Event.CONSUMER_UPDATE_POWER_POSITIVE);
         this.power[val] = power;
       } else {
-        this.m.events.add(Event.CONSUMER_UPDATE_POWER_ZERO);
+        this.m.events.push(Event.CONSUMER_UPDATE_POWER_ZERO);
       }
     });
 
@@ -514,13 +514,13 @@ class CCVConsumer {
     this.pendingChanges.push(data.changes);
     this.maturingVscs.set(data.vscID, this.m.t[C] + UNBONDING_SECONDS);
     data.slashAcks.forEach((val) => {
-      this.m.events.add(Event.RECEIVE_DOWNTIME_SLASH_ACK);
+      this.m.events.push(Event.RECEIVE_DOWNTIME_SLASH_ACK);
       this.outstandingDowntime[val] = false;
     });
   };
   sendSlashRequest = (val, power, infractionHeight, isDowntime) => {
     if (isDowntime && this.outstandingDowntime[val]) {
-      this.m.events.add(Event.DOWNTIME_SLASH_REQUEST_OUTSTANDING);
+      this.m.events.push(Event.DOWNTIME_SLASH_REQUEST_OUTSTANDING);
       return;
     }
     const data: Slash = {
@@ -531,10 +531,10 @@ class CCVConsumer {
     };
     this.m.outbox[C].add(data);
     if (isDowntime) {
-      this.m.events.add(Event.SEND_DOWNTIME_SLASH_REQUEST);
+      this.m.events.push(Event.SEND_DOWNTIME_SLASH_REQUEST);
       this.outstandingDowntime[val] = true;
     } else {
-      this.m.events.add(Event.SEND_DOUBLE_SIGN_SLASH_REQUEST);
+      this.m.events.push(Event.SEND_DOUBLE_SIGN_SLASH_REQUEST);
     }
   };
 }
@@ -557,7 +557,7 @@ class Model {
   events = undefined;
   mustBeginBlock = {};
 
-  constructor(blocks: Blocks, events) {
+  constructor(blocks: Blocks, events: Event[]) {
     this.outbox[P] = new Outbox(this, P);
     this.outbox[C] = new Outbox(this, C);
     this.staking = new Staking(this);
