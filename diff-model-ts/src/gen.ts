@@ -104,12 +104,18 @@ class ActionGenerator {
     const possible = _.uniq(templates.map((a) => a.kind));
     const distr = _.pick(
       {
-        Delegate: 0.03,
-        Undelegate: 0.03,
-        JumpNBlocks: 0.45,
-        Deliver: 0.45,
-        ProviderSlash: 0.02,
-        ConsumerSlash: 0.02,
+        // Delegate: 0.03,
+        // Undelegate: 0.03,
+        // JumpNBlocks: 0.45,
+        // Deliver: 0.45,
+        // ProviderSlash: 0.02,
+        // ConsumerSlash: 0.02,
+        Delegate: 0.16,
+        Undelegate: 0.16,
+        JumpNBlocks: 0.16,
+        Deliver: 0.2,
+        ProviderSlash: 0.16,
+        ConsumerSlash: 0.16,
       },
       ...possible,
     );
@@ -297,7 +303,7 @@ function doAction(model, action: Action) {
 function gen() {
   const outerEnd = timeSpan();
   //
-  const GOAL_TIME_MINS = 0.5;
+  const GOAL_TIME_MINS = 5;
   const goalTimeMillis = GOAL_TIME_MINS * 60 * 1000;
   const NUM_ACTIONS = 40;
   const DIR = 'traces/';
@@ -318,6 +324,7 @@ function gen() {
     const trace = new Trace();
     for (let j = 0; j < NUM_ACTIONS; j++) {
       const a = actionGenerator.get();
+      // console.log(JSON.stringify(a));
       trace.actions.push(a);
       doAction(model, a);
       trace.consequences.push(model.snapshot());
@@ -331,7 +338,7 @@ function gen() {
     trace.dump(`${DIR}trace_${i}.json`);
     ////////////////////////
     elapsedMillis += end.rounded();
-    if (i % 10000 === 0) {
+    if (i % 4000 === 0) {
       console.log(
         `done ${i}, traces per second ${i / (elapsedMillis / 1000)}`,
       );
@@ -344,12 +351,13 @@ function gen() {
       eventCnt[evtName] = 0;
     }
   }
-  _.chain(eventCnt)
+  const cnts = _.chain(eventCnt)
     .pairs()
-    .sortBy((pair) => -pair[1])
-    .forEach(([evtName, cnt]) => console.log(`${evtName}, ${cnt}`));
+    .sortBy((pair) => -pair[1]);
+  cnts.forEach(([evtName, cnt]) => console.log(`${evtName}, ${cnt}`));
 
   console.log(`ran ${Math.floor(outerEnd.seconds() / 60)} mins`);
+  fs.writeFileSync('cnts.json', JSON.stringify(cnts));
 }
 
 export { gen };
