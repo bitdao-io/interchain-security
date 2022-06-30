@@ -10,7 +10,6 @@ import {
   BLOCK_SECONDS,
   SLASH_DOUBLESIGN,
   SLASH_DOWNTIME,
-  TRUSTING_SECONDS,
 } from './constants.js';
 import _ from 'underscore';
 import { Model } from './model.js';
