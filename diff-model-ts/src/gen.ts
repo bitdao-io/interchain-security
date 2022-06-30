@@ -1,10 +1,6 @@
 import * as fs from 'fs';
 import timeSpan from 'time-span';
-import {
-  Blocks,
-  stakingWithoutSlashing,
-  bondBasedConsumerVotingPower,
-} from './properties.js';
+import { Blocks } from './properties.js';
 import {
   NUM_VALIDATORS,
   P,
@@ -18,7 +14,6 @@ import {
 import _ from 'underscore';
 import { Model } from './model.js';
 import { Event } from './events.js';
-import { strict as assert } from 'node:assert';
 
 function forceMakeEmptyDir(dir) {
   if (!fs.existsSync(dir)) {
@@ -292,7 +287,6 @@ function doAction(model, action: Action) {
     const a = action as ConsumerSlash;
     model.consumerSlash(a.val, a.power, a.infractionHeight, a.isDowntime);
   }
-  throw 'wrong kind';
 }
 
 function writeEventData(allEvents, fn) {
@@ -336,11 +330,6 @@ function gen() {
       trace.actions.push(a);
       doAction(model, a);
       trace.consequences.push(model.snapshot());
-      // assert.ok(stakingWithoutSlashing(blocks), 'stakingWithoutSlashing');
-      // assert.ok(
-      // bondBasedConsumerVotingPower(blocks),
-      // 'bondBasedConsumerVotingPower',
-      // );
     }
     allEvents.push(...events);
     trace.dump(`${DIR}trace_${i}.json`);

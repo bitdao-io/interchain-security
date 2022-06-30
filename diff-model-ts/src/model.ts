@@ -519,7 +519,7 @@ class CCVConsumer {
     });
   };
   sendSlashRequest = (val, power, infractionHeight, isDowntime) => {
-    if (isDowntime && 0 < this.outstandingDowntime[val].length) {
+    if (isDowntime && this.outstandingDowntime[val]) {
       this.m.events.push(Event.DOWNTIME_SLASH_REQUEST_OUTSTANDING);
       return;
     }
