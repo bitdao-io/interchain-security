@@ -1,12 +1,6 @@
 import { Model, Undelegation, Unval } from '../src/model.js';
-import { Events } from '../src/events.js';
 import * as fs from 'fs';
-
-describe('gen', () => {
-  it('dt', () => {
-    expect('foo').toBe('foo');
-  });
-});
+import { gen } from '../src/gen.js';
 
 function undel(o): Undelegation {
   return {
@@ -42,7 +36,7 @@ describe('against python', () => {
   it('dt', () => {
     let j = offset;
     json.forEach(({ transitions }) => {
-      const events = new Events();
+      const events = [];
       const model = new Model(undefined, events);
 
       let i = 0;
@@ -88,5 +82,12 @@ describe('against python', () => {
       });
       j += 1;
     });
+  });
+});
+
+describe('gen', () => {
+  it('dt', () => {
+    gen();
+    expect(true).toBeTruthy();
   });
 });

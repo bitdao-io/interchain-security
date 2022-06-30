@@ -30,11 +30,4 @@ enum Event {
   CONSUMER_UPDATE_POWER_ZERO = 'consumer_update_power_zero',
 }
 
-class Events {
-  events = [];
-  add(e) {
-    this.events.push(e);
-  }
-}
-
-export { Event, Events };
+export { Event };

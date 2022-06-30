@@ -17,7 +17,7 @@ import {
 } from './constants.js';
 import _ from 'underscore';
 import { Model } from './model.js';
-import { Events, Event } from './events.js';
+import { Event } from './events.js';
 import { strict as assert } from 'node:assert';
 
 function forceMakeEmptyDir(dir) {
@@ -25,7 +25,7 @@ function forceMakeEmptyDir(dir) {
     fs.mkdirSync(dir);
     return;
   }
-  fs.rmdirSync(dir, { recursive: true });
+  fs.rmSync(dir, { recursive: true });
   forceMakeEmptyDir(dir);
 }
 
@@ -297,7 +297,7 @@ function doAction(model, action: Action) {
 function gen() {
   const outerEnd = timeSpan();
   //
-  const GOAL_TIME_MINS = 1;
+  const GOAL_TIME_MINS = 0.1;
   const goalTimeMillis = GOAL_TIME_MINS * 60 * 1000;
   const NUM_ACTIONS = 40;
   const DIR = 'traces/';
@@ -312,7 +312,7 @@ function gen() {
     const end = timeSpan();
     ////////////////////////
     const blocks = new Blocks();
-    const events = new Events();
+    const events = [];
     const model = new Model(blocks, events);
     const actionGenerator = new ActionGenerator(model);
     const trace = new Trace();
@@ -327,7 +327,7 @@ function gen() {
       // 'bondBasedConsumerVotingPower',
       // );
     }
-    allEvents.push(...events.events);
+    allEvents.push(...events);
     trace.dump(`${DIR}trace_${i}.json`);
     ////////////////////////
     elapsedMillis += end.rounded();
@@ -338,12 +338,17 @@ function gen() {
     }
   }
   const eventCnt = _.countBy(allEvents, _.identity);
+  console.log(`eventCnt : ${eventCnt}`);
+  for (const [k, v] of Object.entries(eventCnt)) {
+    console.log(``);
+    console.log(`${k},${v}`);
+  }
   for (const evt in Event) {
-    const cnt = eventCnt[evt];
-    console.log(`${evt}, ${cnt}`);
+    const cnt = eventCnt[evt.toString()];
+    console.log(`${evt.toString()}, ${cnt}`);
   }
 
-  console.log(Math.floor(outerEnd.seconds() / 60));
+  console.log(`ran ${Math.floor(outerEnd.seconds() / 60)} mins`);
 }
 
 export { gen };
