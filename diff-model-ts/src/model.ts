@@ -383,8 +383,8 @@ class CCVProvider {
     const hasOps =
       this.vscIDtoOpIDs.has(this.vscID) &&
       0 < this.vscIDtoOpIDs.get(this.vscID).length;
-    if (0 < changes.length || hasOps) {
-      if (0 === changes.length) {
+    if (0 < _.keys(changes).length || hasOps) {
+      if (0 === _.keys(changes).length) {
         this.m.events.push(Event.SEND_VSC_NOT_BECAUSE_CHANGE);
       }
       if (0 < this.downtimeSlashAcks.length) {

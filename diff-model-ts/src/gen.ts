@@ -78,10 +78,7 @@ function weightedRandomKey(distr) {
 
 class ActionGenerator {
   model;
-  delegatedSinceBlock = new Array(NUM_VALIDATORS).fill(false);
-  undelegatedSinceBlock = new Array(NUM_VALIDATORS).fill(false);
   jailed = new Array(NUM_VALIDATORS).fill(false);
-  lastJumped = [];
 
   constructor(model) {
     this.model = model;
@@ -133,25 +130,21 @@ class ActionGenerator {
   };
 
   candidateDelegate = (): Action[] => {
-    return _.range(NUM_VALIDATORS)
-      .filter((i) => !this.delegatedSinceBlock[i])
-      .map((i) => {
-        return {
-          kind: 'Delegate',
-          val: i,
-        };
-      });
+    return _.range(NUM_VALIDATORS).map((i) => {
+      return {
+        kind: 'Delegate',
+        val: i,
+      };
+    });
   };
 
   candidateUndelegate = (): Action[] => {
-    return _.range(NUM_VALIDATORS)
-      .filter((i) => !this.undelegatedSinceBlock[i])
-      .map((i) => {
-        return {
-          kind: 'Undelegate',
-          val: i,
-        };
-      });
+    return _.range(NUM_VALIDATORS).map((i) => {
+      return {
+        kind: 'Undelegate',
+        val: i,
+      };
+    });
   };
 
   candidateJumpNBlocks = (): Action[] => [{ kind: 'JumpNBlocks' }];
@@ -191,12 +184,10 @@ class ActionGenerator {
   };
 
   selectDelegate = (a): Delegate => {
-    this.delegatedSinceBlock[a.val] = true;
     return { ...a, amt: _.random(1, 5) * TOKEN_SCALAR };
   };
 
   selectUndelegate = (a): Undelegate => {
-    this.undelegatedSinceBlock[a.val] = true;
     return { ...a, amt: _.random(1, 4) * TOKEN_SCALAR };
   };
 
@@ -208,10 +199,6 @@ class ActionGenerator {
       n: _.sample([1, 6]),
       secondsPerBlock: BLOCK_SECONDS,
     };
-    if (a.chains.includes(P)) {
-      this.delegatedSinceBlock = new Array(NUM_VALIDATORS).fill(false);
-      this.undelegatedSinceBlock = new Array(NUM_VALIDATORS).fill(false);
-    }
     return a;
   };
   selectDeliver = (a): Deliver => {
@@ -306,7 +293,7 @@ function writeEventData(allEvents, fn) {
 
 function gen() {
   const outerEnd = timeSpan();
-  const GOAL_TIME_MINS = 5;
+  const GOAL_TIME_MINS = 1;
   const goalTimeMillis = GOAL_TIME_MINS * 60 * 1000;
   const NUM_ACTIONS = 40;
   const DIR = 'traces/';
