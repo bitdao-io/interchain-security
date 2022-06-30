@@ -21,6 +21,7 @@ import {
   BLOCK_SECONDS,
   TOKEN_SCALAR,
   INITIAL_DELEGATOR_TOKENS,
+  TRUSTING_SECONDS,
 } from './constants.js';
 
 enum Status {
@@ -557,6 +558,11 @@ class Model {
   events = undefined;
   mustBeginBlock = {};
 
+  lastUpdateClient = _.object([
+    [P, 0],
+    [C, 0],
+  ]) as { provider: number; consumer: number };
+
   constructor(blocks: Blocks, events: Event[]) {
     this.outbox[P] = new Outbox(this, P);
     this.outbox[C] = new Outbox(this, C);
@@ -572,6 +578,7 @@ class Model {
     this.mustBeginBlock[P] = true;
     this.mustBeginBlock[C] = true;
   }
+
   snapshot = () => {
     return cloneDeep({
       tokens: this.staking.tokens,
@@ -589,11 +596,18 @@ class Model {
   hasUndelivered = (chain): boolean => {
     return !this.outbox[chain === P ? C : P].isEmpty();
   };
+  updateClient = (chain) => {
+    if (this.lastUpdateClient[chain] + TRUSTING_SECONDS < this.t[chain]) {
+      throw 'EXPIRED! - not supposed to happen. Bad model.';
+    }
+    this.lastUpdateClient[chain] = this.t[chain];
+  };
   idempotentBeginBlock = (chain) => {
     if (this.mustBeginBlock[chain]) {
       this.mustBeginBlock[chain] = false;
       this.h[chain] += 1;
       this.t[chain] = this.T;
+      this.updateClient(chain);
       if (chain === P) {
         // No op
       }
@@ -638,6 +652,7 @@ class Model {
   };
   deliver = (chain: string) => {
     this.idempotentBeginBlock(chain);
+    this.updateClient(chain);
     if (chain === P) {
       this.outbox[C].consume().forEach((p) => {
         this.blocks.partialOrder.deliver(P, p.sendHeight, this.h[P]);

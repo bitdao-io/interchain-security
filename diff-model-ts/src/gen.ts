@@ -80,7 +80,6 @@ function weightedRandomKey(distr) {
 class ActionGenerator {
   model;
   jailed = new Array(NUM_VALIDATORS).fill(false);
-  lastUpdateClient = { P: 0, C: 0 };
 
   constructor(model) {
     this.model = model;
@@ -128,7 +127,7 @@ class ActionGenerator {
     if (kind === 'ConsumerSlash') {
       return this.selectConsumerSlash(a);
     }
-    throw `kidn doesn't match`;
+    throw `kind doesn't match`;
   };
 
   candidateDelegate = (): Action[] => {
@@ -147,20 +146,6 @@ class ActionGenerator {
         val: i,
       };
     });
-  };
-
-  candidateJumpNBlocks = (): Action[] => [{ kind: 'JumpNBlocks' }];
-
-  candidateDeliver = (): Action[] => {
-    return [P, C]
-      .filter((c) => this.model.hasUndelivered(c))
-      .filter(
-        (c) =>
-          this.model.t[c] <= this.lastUpdateClient[c] + TRUSTING_SECONDS,
-      )
-      .map((c) => {
-        return { kind: 'Deliver', chain: c };
-      });
   };
 
   candidateProviderSlash = (): Action[] => {
@@ -189,27 +174,40 @@ class ActionGenerator {
       });
   };
 
-  selectDelegate = (a): Delegate => {
-    return { ...a, amt: _.random(1, 5) * TOKEN_SCALAR };
-  };
+  candidateJumpNBlocks = (): Action[] => [{ kind: 'JumpNBlocks' }];
 
-  selectUndelegate = (a): Undelegate => {
-    return { ...a, amt: _.random(1, 4) * TOKEN_SCALAR };
+  candidateDeliver = (): Action[] => {
+    return [P, C]
+      .filter((c) => this.model.hasUndelivered(c))
+      .map((c) => {
+        return { kind: 'Deliver', chain: c };
+      });
   };
-
   selectJumpNBlocks = (a): JumpNBlocks => {
-    const chains = _.sample([[P], [C], [P, C]]); //TODO:
+    const chainCandidates = [];
+    if (this.model.t[P] === this.model.t[C]) {
+      chainCandidates.push([P, C]);
+    } else if (this.model.t[P] < this.model.t[C]) {
+      chainCandidates.push([P]);
+    } else {
+      chainCandidates.push([C]);
+    }
     a = {
       ...a,
-      chains,
+      chains: _.sample(chainCandidates),
       n: _.sample([1, 6]),
       secondsPerBlock: BLOCK_SECONDS,
     };
     return a;
   };
   selectDeliver = (a): Deliver => {
-    this.lastUpdateClient[a.chain] = this.model.t[a.chain];
     return a;
+  };
+  selectDelegate = (a): Delegate => {
+    return { ...a, amt: _.random(1, 5) * TOKEN_SCALAR };
+  };
+  selectUndelegate = (a): Undelegate => {
+    return { ...a, amt: _.random(1, 4) * TOKEN_SCALAR };
   };
   selectProviderSlash = (a): ProviderSlash => {
     // TODO: can only happen with evidence, power can't be random
