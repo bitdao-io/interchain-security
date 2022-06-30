@@ -1,5 +1,4 @@
-import { gen, fromTraces } from './gen.js';
+import { gen } from './gen.js';
 console.log(`running  main`);
-// gen();
-fromTraces('traces_covering', undefined);
+gen();
 console.log(`finished running main`);

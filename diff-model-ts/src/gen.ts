@@ -332,47 +332,4 @@ function gen() {
   writeEventData(allEvents, 'Gen');
 }
 
-function fromTraces(
-  fn,
-  compare: undefined | ((model: Model, con) => void),
-) {
-  const raw = fs.readFileSync(`${fn}.json`, 'utf-8');
-  const json = JSON.parse(raw);
-
-  writeEventData(json.map((trace) => trace.events).flat(), 'PyCovering');
-
-  const allEvents = [];
-  json.forEach(({ transitions }) => {
-    const events = [];
-    const model = new Model(new Blocks(), events);
-    transitions.forEach(([a, con]) => {
-      switch (a.kind) {
-        case 'Delegate':
-          model.delegate(a.val, a.amt);
-          break;
-        case 'Undelegate':
-          model.undelegate(a.val, a.amt);
-          break;
-        case 'JumpNBlocks':
-          model.jumpNBlocks(a.n, a.chains, a.seconds_per_block);
-          break;
-        case 'Deliver':
-          model.deliver(a.chain);
-          break;
-        case 'ProviderSlash':
-          model.providerSlash(a.val, a.height, a.power, a.factor);
-          break;
-        case 'ConsumerSlash':
-          model.consumerSlash(a.val, a.power, a.height, a.is_downtime);
-          break;
-      }
-      if (compare) {
-        compare(model, con);
-      }
-    });
-    allEvents.push(...events);
-  });
-  writeEventData(allEvents, 'TsCovering');
-}
-
-export { gen, fromTraces };
+export { gen };
