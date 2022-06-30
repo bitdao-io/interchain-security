@@ -299,6 +299,8 @@ def gen():
 
     while i < num_runs:
         i += 1
+        if 0 < elapsed and i % 100 == 0:
+            print(f"traces per second {i/elapsed}")
         if not debug and 10 < elapsed:
             num_runs = (GOAL_TIME_MINS * 60) / (elapsed / i)
         t_start = time.time()

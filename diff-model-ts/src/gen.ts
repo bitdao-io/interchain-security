@@ -98,8 +98,8 @@ class ActionGenerator {
       this.candidateUndelegate(),
       this.candidateJumpNBlocks(),
       this.candidateDeliver(),
-      // this.candidateProviderSlash(),
-      // this.candidateConsumerSlash(),
+      this.candidateProviderSlash(),
+      this.candidateConsumerSlash(),
     ]);
     const possible = _.uniq(templates.map((a) => a.kind));
     const distr = _.pick(
@@ -303,11 +303,14 @@ function gen() {
   const DIR = 'traces/';
   forceMakeEmptyDir(DIR);
   let numRuns = 1000000000000;
-  let elapsed = 0;
+  let elapsedMillis = 0;
   let i = 0;
   while (i < numRuns) {
     i += 1;
-    numRuns = Math.round(goalTimeMillis / (elapsed / i) + 0.5);
+    if (i % 100 === 0 && 0 < elapsedMillis) {
+      console.log(`traces per second ${i / (elapsedMillis / 1000)}`);
+    }
+    numRuns = Math.round(goalTimeMillis / (elapsedMillis / i) + 0.5);
     const end = timeSpan();
     ////////////////////////
     const blocks = new Blocks();
@@ -320,12 +323,15 @@ function gen() {
       trace.actions.push(a);
       doAction(model, a);
       trace.consequences.push(model.snapshot());
-      assert.ok(stakingWithoutSlashing(blocks));
-      assert.ok(bondBasedConsumerVotingPower(blocks));
+      // assert.ok(stakingWithoutSlashing(blocks), 'stakingWithoutSlashing');
+      // assert.ok(
+      // bondBasedConsumerVotingPower(blocks),
+      // 'bondBasedConsumerVotingPower',
+      // );
     }
     trace.dump(`${DIR}trace_${i}.json`);
     ////////////////////////
-    elapsed = end.rounded();
+    elapsedMillis += end.rounded();
     if (i % 1000 === 0) {
       console.log(`finish ${i}`);
     }
