@@ -96,5 +96,5 @@ def combine():
         with open(f"{fnout}.json", "w") as fd:
             fd.write(json.dumps(ret, indent=2))
 
-    # do("traces_covering/", "traces_covering")
-    do("traces/", "traces_all")
+    do("traces_covering/", "traces_covering")
+    # do("traces/", "traces_all")
