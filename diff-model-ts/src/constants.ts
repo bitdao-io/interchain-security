@@ -1,6 +1,7 @@
 const P = 'provider';
 const C = 'consumer';
 const UNBONDING_SECONDS = 45;
+const TRUSTING_SECONDS = 44;
 const NUM_VALIDATORS = 4;
 const MAX_VALIDATORS = 2; // allows jailing 2 validators
 const ZERO_TIMEOUT_HEIGHT = 100000;
@@ -16,6 +17,7 @@ export {
   P,
   C,
   UNBONDING_SECONDS,
+  TRUSTING_SECONDS,
   NUM_VALIDATORS,
   MAX_VALIDATORS,
   ZERO_TIMEOUT_HEIGHT,

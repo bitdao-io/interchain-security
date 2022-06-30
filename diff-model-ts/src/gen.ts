@@ -10,6 +10,7 @@ import {
   BLOCK_SECONDS,
   SLASH_DOUBLESIGN,
   SLASH_DOWNTIME,
+  TRUSTING_SECONDS,
 } from './constants.js';
 import _ from 'underscore';
 import { Model } from './model.js';
@@ -79,6 +80,7 @@ function weightedRandomKey(distr) {
 class ActionGenerator {
   model;
   jailed = new Array(NUM_VALIDATORS).fill(false);
+  lastUpdateClient = { P: 0, C: 0 };
 
   constructor(model) {
     this.model = model;
@@ -98,8 +100,8 @@ class ActionGenerator {
       {
         Delegate: 0.03,
         Undelegate: 0.03,
-        JumpNBlocks: 0.45,
-        Deliver: 0.45,
+        JumpNBlocks: 0.05,
+        Deliver: 0.85,
         ProviderSlash: 0.02,
         ConsumerSlash: 0.02,
       },
@@ -126,7 +128,7 @@ class ActionGenerator {
     if (kind === 'ConsumerSlash') {
       return this.selectConsumerSlash(a);
     }
-    throw 'invalid kind';
+    throw `kidn doesn't match`;
   };
 
   candidateDelegate = (): Action[] => {
@@ -152,6 +154,10 @@ class ActionGenerator {
   candidateDeliver = (): Action[] => {
     return [P, C]
       .filter((c) => this.model.hasUndelivered(c))
+      .filter(
+        (c) =>
+          this.model.t[c] <= this.lastUpdateClient[c] + TRUSTING_SECONDS,
+      )
       .map((c) => {
         return { kind: 'Deliver', chain: c };
       });
@@ -202,6 +208,7 @@ class ActionGenerator {
     return a;
   };
   selectDeliver = (a): Deliver => {
+    this.lastUpdateClient[a.chain] = this.model.t[a.chain];
     return a;
   };
   selectProviderSlash = (a): ProviderSlash => {
