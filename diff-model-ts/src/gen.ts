@@ -297,7 +297,7 @@ function doAction(model, action: Action) {
 function gen() {
   const outerEnd = timeSpan();
   //
-  const GOAL_TIME_MINS = 0.1;
+  const GOAL_TIME_MINS = 0.5;
   const goalTimeMillis = GOAL_TIME_MINS * 60 * 1000;
   const NUM_ACTIONS = 40;
   const DIR = 'traces/';
@@ -338,15 +338,16 @@ function gen() {
     }
   }
   const eventCnt = _.countBy(allEvents, _.identity);
-  console.log(`eventCnt : ${eventCnt}`);
-  for (const [k, v] of Object.entries(eventCnt)) {
-    console.log(``);
-    console.log(`${k},${v}`);
-  }
   for (const evt in Event) {
-    const cnt = eventCnt[evt.toString()];
-    console.log(`${evt.toString()}, ${cnt}`);
+    const evtName = Event[evt];
+    if (!_.has(eventCnt, evtName)) {
+      eventCnt[evtName] = 0;
+    }
   }
+  _.chain(eventCnt)
+    .pairs()
+    .sortBy((pair) => -pair[1])
+    .forEach(([evtName, cnt]) => console.log(`${evtName}, ${cnt}`));
 
   console.log(`ran ${Math.floor(outerEnd.seconds() / 60)} mins`);
 }
