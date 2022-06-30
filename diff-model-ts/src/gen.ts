@@ -17,7 +17,7 @@ import {
 } from './constants.js';
 import _ from 'underscore';
 import { Model } from './model.js';
-import { Events } from './events.js';
+import { Events, Event } from './events.js';
 import { strict as assert } from 'node:assert';
 
 function forceMakeEmptyDir(dir) {
@@ -308,9 +308,6 @@ function gen() {
   const allEvents = [];
   while (i < numRuns) {
     i += 1;
-    if (i % 1000 === 0 && 0 < elapsedMillis) {
-      console.log(`traces per second ${i / (elapsedMillis / 1000)}`);
-    }
     numRuns = Math.round(goalTimeMillis / (elapsedMillis / i) + 0.5);
     const end = timeSpan();
     ////////////////////////
@@ -334,19 +331,18 @@ function gen() {
     trace.dump(`${DIR}trace_${i}.json`);
     ////////////////////////
     elapsedMillis += end.rounded();
-    if (i % 1000 === 0) {
-      console.log(`finish ${i}`);
+    if (i % 10000 === 0) {
+      console.log(
+        `done ${i}, traces per second ${i / (elapsedMillis / 1000)}`,
+      );
     }
   }
   const eventCnt = _.countBy(allEvents, _.identity);
-  for (const [key, value] of Object.entries(eventCnt)) {
-    console.log(`${key}, ${value}`);
-  }
-  for (const evt in Events.Event) {
-    const cnt = eventCnt[cnt];
+  for (const evt in Event) {
+    const cnt = eventCnt[evt];
     console.log(`${evt}, ${cnt}`);
   }
-  //
+
   console.log(Math.floor(outerEnd.seconds() / 60));
 }
 
