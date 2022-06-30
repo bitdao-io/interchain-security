@@ -305,9 +305,10 @@ function gen() {
   let numRuns = 1000000000000;
   let elapsedMillis = 0;
   let i = 0;
+  const allEvents = [];
   while (i < numRuns) {
     i += 1;
-    if (i % 100 === 0 && 0 < elapsedMillis) {
+    if (i % 1000 === 0 && 0 < elapsedMillis) {
       console.log(`traces per second ${i / (elapsedMillis / 1000)}`);
     }
     numRuns = Math.round(goalTimeMillis / (elapsedMillis / i) + 0.5);
@@ -329,12 +330,21 @@ function gen() {
       // 'bondBasedConsumerVotingPower',
       // );
     }
+    allEvents.push(...events.events);
     trace.dump(`${DIR}trace_${i}.json`);
     ////////////////////////
     elapsedMillis += end.rounded();
     if (i % 1000 === 0) {
       console.log(`finish ${i}`);
     }
+  }
+  const eventCnt = _.countBy(allEvents, _.identity);
+  for (const [key, value] of Object.entries(eventCnt)) {
+    console.log(`${key}, ${value}`);
+  }
+  for (const evt in Events.Event) {
+    const cnt = eventCnt[cnt];
+    console.log(`${evt}, ${cnt}`);
   }
   //
   console.log(Math.floor(outerEnd.seconds() / 60));
