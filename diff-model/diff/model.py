@@ -382,9 +382,7 @@ class CCVProvider:
         if 0 < len(changes) or 0 < len(
             self.vsc_id_to_unbonding_op_ids[self.vsc_id]
         ):
-            if 0 == len(changes) and 0 < len(
-                self.vsc_id_to_unbonding_op_ids[self.vsc_id]
-            ):
+            if 0 == len(changes):
                 self.m.events.add(Events.Event.SEND_VSC_NOT_BECAUSE_CHANGE)
             if 0 < len(self.downtime_slash_requests):
                 self.m.events.add(Events.Event.SEND_VSC_WITH_DOWNTIME_ACK)
