@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import timeSpan from 'time-span';
-import { Blocks } from './properties.js';
+import { Blocks, Block } from './properties.js';
 import {
   NUM_VALIDATORS,
   P,
@@ -14,6 +14,10 @@ import {
 import _ from 'underscore';
 import { Model } from './model.js';
 import { Event } from './events.js';
+import {
+  stakingWithoutSlashing,
+  bondBasedConsumerVotingPower,
+} from './properties.js';
 
 function forceMakeEmptyDir(dir) {
   if (!fs.existsSync(dir)) {
@@ -90,8 +94,8 @@ class ActionGenerator {
       this.candidateUndelegate(),
       this.candidateJumpNBlocks(),
       this.candidateDeliver(),
-      this.candidateProviderSlash(),
-      this.candidateConsumerSlash(),
+      // this.candidateProviderSlash(),
+      // this.candidateConsumerSlash(),
     ]);
     const possible = _.uniq(templates.map((a) => a.kind));
     const distr = _.pick(
@@ -233,7 +237,10 @@ class ActionGenerator {
 class Trace {
   actions = [];
   consequences = [];
-  blocks = [];
+  blocks = _.object([
+    [P, new Map()],
+    [C, new Map()],
+  ]) as { provider: Map<number, Block>; consumer: Map<number, Block> };
   events = [];
   dump = (fn: string) => {
     const transitions = _.zip(this.actions, this.consequences).map(
@@ -241,7 +248,16 @@ class Trace {
         return { action: a, consequence: c };
       },
     );
-    const json = JSON.stringify({ transitions }, null, 4);
+    const blocks = _.mapObject(this.blocks, (map) =>
+      _.chain(Array.from(map.entries()))
+        .pairs()
+        .sortBy((pair) => pair[0]),
+    );
+    const json = JSON.stringify(
+      { transitions, blocks, events: this.events },
+      null,
+      4,
+    );
     this.write(fn, json);
   };
   write = (fn, content) => {
@@ -297,9 +313,9 @@ function writeEventData(allEvents, fn) {
 
 function gen() {
   const outerEnd = timeSpan();
-  const GOAL_TIME_MINS = 1;
+  const GOAL_TIME_MINS = 5;
   const goalTimeMillis = GOAL_TIME_MINS * 60 * 1000;
-  const NUM_ACTIONS = 40;
+  const NUM_ACTIONS = 10;
   const DIR = 'traces/';
   forceMakeEmptyDir(DIR);
   let numRuns = 1000000000000;
@@ -321,9 +337,25 @@ function gen() {
       trace.actions.push(a);
       doAction(model, a);
       trace.consequences.push(model.snapshot());
+      //
+      let ok = true;
+      ok = bondBasedConsumerVotingPower(blocks);
+      if (!ok) {
+        console.log('j ', j);
+        trace.events = events;
+        trace.blocks = blocks.blocks;
+        trace.dump(`trace_BAD.json`);
+        throw 'bondBasedConsumerVotingPower';
+      }
+      // ok = stakingWithoutSlashing(blocks);
+      if (!ok) {
+        throw 'stakingWithoutSlashing';
+      }
+      //
     }
-    allEvents.push(...events);
-    trace.dump(`${DIR}trace_${i}.json`);
+
+    // allEvents.push(...events);
+    // trace.dump(`${DIR}trace_${i}.json`);
     ////////////////////////
     elapsedMillis += end.rounded();
     if (i % 4000 === 0) {
@@ -336,4 +368,18 @@ function gen() {
   writeEventData(allEvents, 'Gen');
 }
 
-export { gen };
+function replay(actions: Action[]) {
+  const blocks = new Blocks();
+  const events = [];
+  const model = new Model(blocks, events);
+  for (let i = 0; i < actions.length; i++) {
+    const a = actions[i];
+    doAction(model, a);
+  }
+}
+function replayFile(fn: string) {
+  const trace = JSON.parse(fs.readFileSync(fn, 'utf8'));
+  replay(trace.transitions.map((t) => t.action));
+}
+
+export { gen, replay, replayFile };

@@ -1,4 +1,5 @@
-import { gen } from './gen.js';
+import { gen, replayFile } from './gen.js';
 console.log(`running  main`);
-gen();
+// gen();
+replayFile('trace_BAD.json');
 console.log(`finished running main`);

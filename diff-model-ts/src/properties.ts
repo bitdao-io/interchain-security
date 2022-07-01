@@ -91,9 +91,13 @@ class Blocks {
 }
 
 function sum(arr): number {
-  return _.reduce(arr, (t, x) => t + x, 0);
+  return _.reduce(arr, (accum, x) => accum + x, 0);
 }
 
+/**
+ * Is the total value in the system constant?
+ * It only makes sense to check this if never slashing.
+ */
 function stakingWithoutSlashing(blockz: Blocks): boolean {
   const blocks = _.sortBy(
     Array.from(blockz.blocks[P].entries()),
@@ -140,10 +144,11 @@ function bondBasedConsumerVotingPower(blockz: Blocks): boolean {
   }
   function inner(hc) {
     const hp = partialOrder.getGreatestPred(C, hc);
-    if (hp === undefined) {
-      assert(false, 'faulty inner');
-    }
-    function getHC_(tsHC) {
+    assert(hp !== undefined, 'this should never happen.');
+    function getHC_() {
+      const tsHC = blocks[C].get(hc).t;
+      // Get earliest height on consumer
+      // that a VSC received at hc could mature
       const heights = Array.from(blocks[C].keys()).sort();
       for (let i = 0; i < heights.length; i++) {
         const hc_ = heights[i];
@@ -153,23 +158,25 @@ function bondBasedConsumerVotingPower(blockz: Blocks): boolean {
       }
       return undefined;
     }
-    const hc_ = getHC_(blocks[C].get(hc).t);
+    const hc_ = getHC_();
     let hp_ = undefined;
     if (hc_ !== undefined) {
       hp_ = partialOrder.getLeastSucc(C, hc_);
     }
-    let limit = Math.max(...Array.from(blocks[P].keys()));
+    let limit = Math.max(...Array.from(blocks[P].keys())) + 1;
     if (hp_ !== undefined) {
-      // TODO: check this!
-      limit = 1;
-      hp_ = 1;
+      // If provider receives maturation
+      // only check property up to and not including
+      // the block at which received.
+      limit = hp_;
     }
-    for (let h = hp; h < limit + 1; h++) {
+    for (let h = hp; h < limit; h++) {
       for (let i = 0; i < NUM_VALIDATORS; i++) {
         const powerP = powerProvider(blocks[P].get(h));
         const powerC = powerConsumer(blocks[C].get(hc));
         if (powerC[i] !== undefined) {
           if (powerP[i] < powerC[i]) {
+            console.log(`h,hc=${h},${hc}`);
             return false;
           }
         }
