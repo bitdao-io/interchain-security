@@ -11,13 +11,14 @@ import {
   SLASH_DOUBLESIGN,
   SLASH_DOWNTIME,
 } from './constants.js';
-import _ from 'underscore';
-import { Model } from './model.js';
+import _, { max } from 'underscore';
+import { Model, Status } from './model.js';
 import { Event } from './events.js';
 import {
   stakingWithoutSlashing,
   bondBasedConsumerVotingPower,
 } from './properties.js';
+import { STATUS_CODES } from 'http';
 
 function forceMakeEmptyDir(dir) {
   if (!fs.existsSync(dir)) {
@@ -83,6 +84,10 @@ function weightedRandomKey(distr) {
 class ActionGenerator {
   model;
   jailed = new Array(NUM_VALIDATORS).fill(false);
+  slashed = _.object([
+    [P, new Map()],
+    [C, new Map()],
+  ]);
 
   constructor(model) {
     this.model = model;
@@ -94,16 +99,16 @@ class ActionGenerator {
       this.candidateUndelegate(),
       this.candidateJumpNBlocks(),
       this.candidateDeliver(),
-      // this.candidateProviderSlash(),
-      // this.candidateConsumerSlash(),
+      this.candidateProviderSlash(),
+      this.candidateConsumerSlash(),
     ]);
     const possible = _.uniq(templates.map((a) => a.kind));
     const distr = _.pick(
       {
         Delegate: 0.03,
         Undelegate: 0.03,
-        JumpNBlocks: 0.05,
-        Deliver: 0.85,
+        JumpNBlocks: 0.45,
+        Deliver: 0.45,
         ProviderSlash: 0.02,
         ConsumerSlash: 0.02,
       },
@@ -141,6 +146,9 @@ class ActionGenerator {
       };
     });
   };
+  selectDelegate = (a): Delegate => {
+    return { ...a, amt: _.random(1, 5) * TOKEN_SCALAR };
+  };
 
   candidateUndelegate = (): Action[] => {
     return _.range(NUM_VALIDATORS).map((i) => {
@@ -150,9 +158,13 @@ class ActionGenerator {
       };
     });
   };
+  selectUndelegate = (a): Undelegate => {
+    return { ...a, amt: _.random(1, 4) * TOKEN_SCALAR };
+  };
 
   candidateProviderSlash = (): Action[] => {
     return _.range(NUM_VALIDATORS)
+      .filter((i) => this.model.staking.status[i] !== Status.UNBONDED)
       .filter((i) => {
         const cntWouldBeNotJailed = this.jailed.filter(
           (j) => j !== i && !this.jailed[j],
@@ -163,9 +175,19 @@ class ActionGenerator {
         return { kind: 'ProviderSlash', val: i };
       });
   };
+  selectProviderSlash = (a): ProviderSlash => {
+    this.jailed[a.val] = true;
+    return {
+      ...a,
+      power: _.random(1, 6) * TOKEN_SCALAR,
+      infractionHeight: Math.floor(Math.random() * this.model.h[C]),
+      factor: _.sample([SLASH_DOUBLESIGN, SLASH_DOWNTIME]),
+    };
+  };
 
   candidateConsumerSlash = (): Action[] => {
     return _.range(NUM_VALIDATORS)
+      .filter((i) => this.model.ccvC.power[i] !== undefined)
       .filter((i) => {
         const cntWouldBeNotJailed = this.jailed.filter(
           (j) => j !== i && !this.jailed[j],
@@ -176,16 +198,17 @@ class ActionGenerator {
         return { kind: 'ConsumerSlash', val: i };
       });
   };
+  selectConsumerSlash = (a): ConsumerSlash => {
+    this.jailed[a.val] = true;
+    return {
+      ...a,
+      power: _.random(1, 6) * TOKEN_SCALAR,
+      infractionHeight: Math.floor(Math.random() * this.model.h[C]),
+      isDowntime: _.sample([true, false]),
+    };
+  };
 
   candidateJumpNBlocks = (): Action[] => [{ kind: 'JumpNBlocks' }];
-
-  candidateDeliver = (): Action[] => {
-    return [P, C]
-      .filter((c) => this.model.hasUndelivered(c))
-      .map((c) => {
-        return { kind: 'Deliver', chain: c };
-      });
-  };
   selectJumpNBlocks = (a): JumpNBlocks => {
     const chainCandidates = [];
     if (this.model.t[P] === this.model.t[C]) {
@@ -203,34 +226,16 @@ class ActionGenerator {
     };
     return a;
   };
+
+  candidateDeliver = (): Action[] => {
+    return [P, C]
+      .filter((c) => this.model.hasUndelivered(c))
+      .map((c) => {
+        return { kind: 'Deliver', chain: c };
+      });
+  };
   selectDeliver = (a): Deliver => {
     return a;
-  };
-  selectDelegate = (a): Delegate => {
-    return { ...a, amt: _.random(1, 5) * TOKEN_SCALAR };
-  };
-  selectUndelegate = (a): Undelegate => {
-    return { ...a, amt: _.random(1, 4) * TOKEN_SCALAR };
-  };
-  selectProviderSlash = (a): ProviderSlash => {
-    // TODO: can only happen with evidence, power can't be random
-    this.jailed[a.val] = true;
-    return {
-      ...a,
-      power: _.random(1, 6) * TOKEN_SCALAR,
-      infractionHeight: Math.floor(Math.random() * this.model.h[P]),
-      factor: _.sample([SLASH_DOUBLESIGN, SLASH_DOWNTIME]),
-    };
-  };
-  selectConsumerSlash = (a): ConsumerSlash => {
-    // TODO: can only happen with evidence, power can't be random
-    this.jailed[a.val] = true;
-    return {
-      ...a,
-      power: _.random(1, 6) * TOKEN_SCALAR,
-      infractionHeight: Math.floor(Math.random() * this.model.h[C]),
-      isDowntime: _.sample([true, false]),
-    };
   };
 }
 
@@ -258,13 +263,7 @@ class Trace {
       null,
       4,
     );
-    this.write(fn, json);
-  };
-  write = (fn, content) => {
-    // fs.writeFile(fn, content, 'utf8', (err) => {
-    // if (err) throw err;
-    // });
-    fs.writeFileSync(fn, content);
+    fs.writeFileSync(fn, json);
   };
 }
 
@@ -339,16 +338,15 @@ function gen() {
       trace.consequences.push(model.snapshot());
     }
     let ok = true;
-    ok = bondBasedConsumerVotingPower(blocks);
+    ok = true;
+    // ok = bondBasedConsumerVotingPower(blocks);
     if (!ok) {
       throw 'bondBasedConsumerVotingPower';
     }
-    ok = stakingWithoutSlashing(blocks);
+    // ok = stakingWithoutSlashing(blocks);
     if (!ok) {
       throw 'stakingWithoutSlashing';
     }
-    trace.events = events;
-    trace.blocks = blocks.blocks;
     trace.dump(`${DIR}trace_${i}.json`);
     allEvents.push(...events);
     ////////////////////////
@@ -371,8 +369,8 @@ function replay(actions: Action[]) {
     const a = actions[i];
     doAction(model, a);
   }
-  bondBasedConsumerVotingPower(blocks);
 }
+
 function replayFile(fn: string) {
   const trace = JSON.parse(fs.readFileSync(fn, 'utf8'));
   replay(trace.transitions.map((t) => t.action));
@@ -380,6 +378,7 @@ function replayFile(fn: string) {
 
 console.log(`running  main`);
 gen();
+// replayFile('trace_bad.json');
 console.log(`finished running main`);
 
 export { gen };

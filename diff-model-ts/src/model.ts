@@ -686,4 +686,4 @@ class Model {
   };
 }
 
-export { Outbox, Model };
+export { Outbox, Model, Status };
