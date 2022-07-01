@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-// import timeSpan from 'time-span';
+import timeSpan from 'time-span';
 import { Blocks } from './properties.js';
 import {
   NUM_VALIDATORS,
@@ -296,22 +296,20 @@ function writeEventData(allEvents, fn) {
 }
 
 function gen() {
-  // const outerEnd = timeSpan();
+  const outerEnd = timeSpan();
   const GOAL_TIME_MINS = 1;
   const goalTimeMillis = GOAL_TIME_MINS * 60 * 1000;
   const NUM_ACTIONS = 40;
   const DIR = 'traces/';
   forceMakeEmptyDir(DIR);
-  // let numRuns = 50000;
-  // const numRuns = 50000;
-  const numRuns = 1000;
-  // let elapsedMillis = 0;
+  let numRuns = 1000000000000;
+  let elapsedMillis = 0;
   let i = 0;
   const allEvents = [];
   while (i < numRuns) {
     i += 1;
-    // numRuns = Math.round(goalTimeMillis / (elapsedMillis / i) + 0.5);
-    // const end = timeSpan();
+    numRuns = Math.round(goalTimeMillis / (elapsedMillis / i) + 0.5);
+    const end = timeSpan();
     ////////////////////////
     const blocks = new Blocks();
     const events = [];
@@ -327,14 +325,14 @@ function gen() {
     allEvents.push(...events);
     trace.dump(`${DIR}trace_${i}.json`);
     ////////////////////////
-    // elapsedMillis += end.rounded();
+    elapsedMillis += end.rounded();
     if (i % 4000 === 0) {
-      // console.log(
-      // `done ${i}, traces per second ${i / (elapsedMillis / 1000)}`,
-      // );
+      console.log(
+        `done ${i}, traces per second ${i / (elapsedMillis / 1000)}`,
+      );
     }
   }
-  // console.log(`ran ${Math.floor(outerEnd.seconds() / 60)} mins`);
+  console.log(`ran ${Math.floor(outerEnd.seconds() / 60)} mins`);
   writeEventData(allEvents, 'Gen');
 }
 

@@ -8,7 +8,7 @@ export default {
     },
   },
   transformIgnorePatterns: [
-    "node_modules/(?!troublesome-dependency/.*)",
+    "node_modules/(?!(time-span|convert-hrtime))",
   ],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.(m)?js$': '$1',
