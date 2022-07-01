@@ -218,7 +218,7 @@ class Staking {
     });
     const newUnvals = [];
     _.difference(oldVals, newVals)
-      .sort()
+      .sort((a, b) => a - b)
       .forEach((i) => {
         const unval: Unval = {
           val: i,
@@ -245,13 +245,13 @@ class Staking {
       }
     });
     _.difference(newVals, oldVals)
-      .sort()
+      .sort((a, b) => a - b)
       .forEach((i) => {
         // validator bonded
         this.changes[i] = this.tokens[i];
       });
     _.difference(oldVals, newVals)
-      .sort()
+      .sort((a, b) => a - b)
       .forEach((i) => {
         // validator no longer bonded
         this.changes[i] = 0;

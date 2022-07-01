@@ -149,7 +149,7 @@ function bondBasedConsumerVotingPower(blockz: Blocks): boolean {
       const tsHC = blocks[C].get(hc).t;
       // Get earliest height on consumer
       // that a VSC received at hc could mature
-      const heights = Array.from(blocks[C].keys()).sort();
+      const heights = Array.from(blocks[C].keys()).sort((a, b) => a - b);
       for (let i = 0; i < heights.length; i++) {
         const hc_ = heights[i];
         if (tsHC + UNBONDING_SECONDS <= blocks[C].get(hc_).t) {
@@ -176,7 +176,6 @@ function bondBasedConsumerVotingPower(blockz: Blocks): boolean {
         const powerC = powerConsumer(blocks[C].get(hc));
         if (powerC[i] !== undefined) {
           if (powerP[i] < powerC[i]) {
-            console.log(`h,hc=${h},${hc}`);
             return false;
           }
         }

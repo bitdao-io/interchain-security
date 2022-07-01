@@ -1,4 +1,4 @@
-import { gen } from '../src/gen.js';
+import { gen } from '../src/main.js';
 
 describe('tests are working', () => {
   it('dt', () => {
