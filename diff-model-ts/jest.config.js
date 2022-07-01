@@ -4,8 +4,12 @@ export default {
   globals: {
     'ts-jest': {
       useESM: true,
+      tsconfig: '<rootDir>/__tests__/tsconfig.json',
     },
   },
+  transformIgnorePatterns: [
+    "node_modules/(?!troublesome-dependency/.*)",
+  ],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.(m)?js$': '$1',
   },

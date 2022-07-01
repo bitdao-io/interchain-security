@@ -1,6 +1,6 @@
 import { gen } from '../src/gen.js';
 
-describe('gen', () => {
+describe('tests are working', () => {
   it('dt', () => {
     gen();
     expect(true).toBeTruthy();
