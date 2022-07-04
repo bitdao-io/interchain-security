@@ -13,7 +13,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/stretchr/testify/suite"
 
-	distrtypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	channelkeeper "github.com/cosmos/ibc-go/v3/modules/core/04-channel/keeper"
 	channeltypes "github.com/cosmos/ibc-go/v3/modules/core/04-channel/types"
@@ -238,9 +237,6 @@ func (s *DTTestSuite) SetupTest() {
 	s.consumerChain.Signers[val3pk.Address().String()] = val3
 
 	s.setSigningInfos()
-
-	// TODO: delete this once it is no longer needed
-	s.DisableConsumerDistribution()
 
 	tmConfig := ibctesting.NewTendermintConfig()
 
@@ -674,18 +670,6 @@ func (s *DTTestSuite) consumerSlash(a ConsumerSlash) {
 ASSUMPTIONS TEST
 ~~~~~~~~~~~~
 */
-
-// TODO: clear up these hacks after stripping provider/consumer
-func (s *DTTestSuite) DisableConsumerDistribution() {
-	cChain := s.consumerChain
-	cApp := cChain.App.(*appConsumer.App)
-	for i, moduleName := range cApp.MM.OrderBeginBlockers {
-		if moduleName == distrtypes.ModuleName {
-			cApp.MM.OrderBeginBlockers = append(cApp.MM.OrderBeginBlockers[:i], cApp.MM.OrderBeginBlockers[i+1:]...)
-			return
-		}
-	}
-}
 
 func (s *DTTestSuite) TestAssumptions() {
 
