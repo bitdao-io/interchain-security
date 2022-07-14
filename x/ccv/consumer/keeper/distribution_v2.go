@@ -56,30 +56,32 @@ func (k Keeper) AllocateTokens(
 	consumerFeePoolAddr := k.authKeeper.GetModuleAccount(ctx, k.feeCollectorName).GetAddress()
 	fpTokens := k.bankKeeper.GetAllBalances(ctx, consumerFeePoolAddr)
 
-	if totalPreviousPower == 0 {
-		if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, k.feeCollectorName,
-			types.ConsumerRedistributeName, fpTokens); err != nil {
+	if !fpTokens.IsZero() { // don't tokens distribution if no balance in the fee collector
+		if totalPreviousPower == 0 {
+			if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, k.feeCollectorName,
+				types.ConsumerRedistributeName, fpTokens); err != nil {
+				panic(err)
+			}
+			return
+		}
+
+		// split the fee pool, send the consumer's fraction to the consumer redistribution address
+		frac, err := sdk.NewDecFromStr(ConsumerRedistributeFrac)
+		if err != nil {
 			panic(err)
 		}
-		return
-	}
+		decFPTokens := sdk.NewDecCoinsFromCoins(fpTokens...)
+		consRedistrTokens, _ := decFPTokens.MulDec(frac).TruncateDecimal()
+		err = k.bankKeeper.SendCoinsFromModuleToModule(ctx, k.feeCollectorName,
+			types.ConsumerRedistributeName, consRedistrTokens)
+		if err != nil {
+			panic(err)
+		}
 
-	// split the fee pool, send the consumer's fraction to the consumer redistribution address
-	frac, err := sdk.NewDecFromStr(ConsumerRedistributeFrac)
-	if err != nil {
-		panic(err)
+		remainingTokens := fpTokens.Sub(consRedistrTokens)
+		err = k.bankKeeper.SendCoinsFromModuleToModule(ctx, k.feeCollectorName,
+			types.ProviderRewardStagingName, remainingTokens)
 	}
-	decFPTokens := sdk.NewDecCoinsFromCoins(fpTokens...)
-	consRedistrTokens, _ := decFPTokens.MulDec(frac).TruncateDecimal()
-	err = k.bankKeeper.SendCoinsFromModuleToModule(ctx, k.feeCollectorName,
-		types.ConsumerRedistributeName, consRedistrTokens)
-	if err != nil {
-		panic(err)
-	}
-
-	remainingTokens := fpTokens.Sub(consRedistrTokens)
-	err = k.bankKeeper.SendCoinsFromModuleToModule(ctx, k.feeCollectorName,
-		types.ProviderRewardStagingName, remainingTokens)
 
 	// calculate fraction votes
 	previousFractionVotes := sdk.NewDec(sumPreviousPrecommitPower).Quo(sdk.NewDec(totalPreviousPower))
