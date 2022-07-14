@@ -31,8 +31,8 @@ func (suite *KeeperTestSuite) TestParams() {
 	suite.Require().Equal(gotChan, "foobarbaz")
 
 	suite.consumerChain.App.(*app.App).ConsumerKeeper.
-		SetProviderFeePoolAddrStr(suite.consumerChain.GetContext(), "foobar")
+		SetProviderDistributionAddrStr(suite.consumerChain.GetContext(), "foobar")
 	gotAddr := suite.consumerChain.App.(*app.App).ConsumerKeeper.
-		GetProviderFeePoolAddrStr(suite.consumerChain.GetContext())
+		GetProviderDistributionAddrStr(suite.consumerChain.GetContext())
 	suite.Require().Equal(gotAddr, "foobar")
 }

@@ -450,7 +450,6 @@ func New(
 		app.AccountKeeper,
 		app.BankKeeper,
 		app.DistrKeeper,
-		authtypes.FeeCollectorName,
 		distrtypes.ModuleName,
 	)
 

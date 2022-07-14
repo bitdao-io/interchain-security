@@ -548,7 +548,7 @@ func (s *ProviderTestSuite) ReenableProviderDistribution() {
 
 // 	// Ensure that the provider fee pool address stored on the consumer chain
 // 	// is the correct address
-// 	fcAddr2 := cApp.ConsumerKeeper.GetProviderFeePoolAddrStr(cChain.GetContext())
+// 	fcAddr2 := cApp.ConsumerKeeper.GetProviderDistributionAddrStr(cChain.GetContext())
 // 	s.Require().Equal(fcAddr, fcAddr2)
 
 // 	// make sure we're starting at consumer height 21 (some blocks commited during setup)

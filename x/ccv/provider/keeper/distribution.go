@@ -7,11 +7,6 @@ import (
 	ccv "github.com/cosmos/interchain-security/x/ccv/types"
 )
 
-func (k Keeper) GetFeeCollectorAddressStr(ctx sdk.Context) string {
-	return k.accountKeeper.GetModuleAccount(
-		ctx, k.feeCollectorName).GetAddress().String()
-}
-
 func (k Keeper) GetProviderDistributionAddressStr(ctx sdk.Context) string {
 	return k.accountKeeper.GetModuleAccount(
 		ctx, types.DistributionAccount).GetAddress().String()

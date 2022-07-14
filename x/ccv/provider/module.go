@@ -282,8 +282,8 @@ func (am AppModule) OnChanOpenTry(
 		// the consumer chain must be excluded from the blocked addresses
 		// blacklist or all all ibc-transfers from the consumer chain to the
 		// provider chain will fail
-		ProviderFeePoolAddr: am.keeper.GetProviderDistributionAddressStr(ctx),
-		Version:             ccv.Version,
+		ProviderDistributionAddr: am.keeper.GetProviderDistributionAddressStr(ctx),
+		Version:                  ccv.Version,
 	}
 	mdBz, err := (&md).Marshal()
 	if err != nil {

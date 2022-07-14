@@ -325,7 +325,7 @@ func (am AppModule) OnChanOpenAck(
 			"invalid counterparty version: %s, expected %s", md.Version, ccv.Version)
 	}
 
-	am.keeper.SetProviderFeePoolAddrStr(ctx, md.ProviderFeePoolAddr)
+	am.keeper.SetProviderDistributionAddrStr(ctx, md.ProviderDistributionAddr)
 
 	///////////////////////////////////////////////////
 	// Initialize distribution token transfer channel

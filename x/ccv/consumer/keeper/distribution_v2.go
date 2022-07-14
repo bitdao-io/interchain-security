@@ -2,6 +2,9 @@ package keeper
 
 import (
 	"bytes"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	channeltypes "github.com/cosmos/ibc-go/v3/modules/core/04-channel/types"
+	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	transfertypes "github.com/cosmos/ibc-go/v3/modules/apps/transfer/types"
@@ -14,6 +17,13 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
+
+const TransferTimeDelay = 1 * 7 * 24 * time.Hour // 1 weeks
+
+// ConsumerRedistributeFrac The fraction of tokens allocated to the consumer redistribution address
+// during distribution events. The fraction is a string representing a
+// decimal number. For example "0.75" would represent 75%.
+const ConsumerRedistributeFrac = "0.75"
 
 func (k Keeper) Distribute(ctx sdk.Context, req abci.RequestBeginBlock) {
 	// determine the total power signing the block
@@ -214,7 +224,7 @@ func (k Keeper) DistributeToProviderValidatorSetV2(ctx sdk.Context) (err error) 
 		tstProviderAddr := k.authKeeper.GetModuleAccount(ctx,
 			types.ConsumerToSendToProviderName).GetAddress()
 		tstProviderTokens := k.bankKeeper.GetAllBalances(ctx, tstProviderAddr)
-		providerAddr := k.GetProviderFeePoolAddrStr(ctx)
+		providerAddr := k.GetProviderDistributionAddrStr(ctx)
 		timeoutHeight := clienttypes.ZeroHeight()
 		timeoutTimestamp := uint64(ctx.BlockTime().Add(TransferTimeDelay).UnixNano())
 		for _, token := range tstProviderTokens {
@@ -248,4 +258,45 @@ func (k Keeper) DistributeToProviderValidatorSetV2(ctx sdk.Context) (err error) 
 		types.PortID, // source port id
 		providerPoolWeights.GetBytes(),
 	)
+}
+
+func (k Keeper) GetLastTransmissionBlockHeight(ctx sdk.Context) (
+	*types.LastTransmissionBlockHeight, error) {
+
+	store := ctx.KVStore(k.storeKey)
+	bz := store.Get(types.LastDistributionTransmissionKey)
+	ltbh := &types.LastTransmissionBlockHeight{}
+	if bz != nil {
+		err := ltbh.Unmarshal(bz)
+		if err != nil {
+			return ltbh, err
+		}
+	}
+	return ltbh, nil
+}
+
+func (k Keeper) SetLastTransmissionBlockHeight(ctx sdk.Context,
+	ltbh types.LastTransmissionBlockHeight) error {
+
+	store := ctx.KVStore(k.storeKey)
+	bz, err := ltbh.Marshal()
+	if err != nil {
+		return err
+	}
+	store.Set(types.LastDistributionTransmissionKey, bz)
+	return nil
+}
+
+func (k Keeper) ChannelOpenInit(ctx sdk.Context, msg *channeltypes.MsgChannelOpenInit) (
+	*channeltypes.MsgChannelOpenInitResponse, error) {
+	return k.ibcCoreKeeper.ChannelOpenInit(sdk.WrapSDKContext(ctx), msg)
+}
+
+func (k Keeper) GetConnectionHops(ctx sdk.Context, srcPort, srcChan string) ([]string, error) {
+	ch, found := k.channelKeeper.GetChannel(ctx, srcPort, srcChan)
+	if !found {
+		return []string{}, sdkerrors.Wrapf(ccv.ErrChannelNotFound,
+			"cannot get connection hops from non-existent channel")
+	}
+	return ch.ConnectionHops, nil
 }

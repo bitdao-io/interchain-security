@@ -370,8 +370,8 @@ func (suite *ConsumerTestSuite) TestOnChanOpenAck() {
 			consumerModule := consumer.NewAppModule(suite.consumerChain.App.(*appConsumer.App).ConsumerKeeper)
 
 			md := providertypes.HandshakeMetadata{
-				ProviderFeePoolAddr: "", // dummy address used
-				Version:             suite.path.EndpointB.ChannelConfig.Version,
+				ProviderDistributionAddr: "", // dummy address used
+				Version:                  suite.path.EndpointB.ChannelConfig.Version,
 			}
 			mdBz, err := (&md).Marshal()
 			suite.Require().NoError(err)

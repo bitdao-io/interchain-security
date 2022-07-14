@@ -42,7 +42,6 @@ type Keeper struct {
 	stakingKeeper      ccv.StakingKeeper
 	slashingKeeper     ccv.SlashingKeeper
 	distributionKeeper ccv.DistributionKeeper
-	feeCollectorName   string
 	distributionName   string
 }
 
@@ -54,7 +53,7 @@ func NewKeeper(
 	stakingKeeper ccv.StakingKeeper, slashingKeeper ccv.SlashingKeeper,
 	accountKeeper ccv.AccountKeeper, bankKeeper ccv.BankKeeper,
 	distributionKeeper ccv.DistributionKeeper,
-	feeCollectorName, distributionName string,
+	distributionName string,
 ) Keeper {
 	// set KeyTable if it has not already been set
 	if !paramSpace.HasKeyTable() {
@@ -75,7 +74,6 @@ func NewKeeper(
 		stakingKeeper:      stakingKeeper,
 		slashingKeeper:     slashingKeeper,
 		distributionKeeper: distributionKeeper,
-		feeCollectorName:   feeCollectorName,
 		distributionName:   distributionName,
 	}
 }

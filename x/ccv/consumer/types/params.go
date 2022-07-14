@@ -11,7 +11,7 @@ var (
 	KeyEnabled                           = []byte("Enabled")
 	KeyBlocksPerDistributionTransmission = []byte("BlocksPerDistributionTransmission")
 	KeyDistributionTransmissionChannel   = []byte("DistributionTransmissionChannel")
-	KeyProviderFeePoolAddrStr            = []byte("ProviderFeePoolAddrStr")
+	KeyProviderDistributionAddrStr       = []byte("ProviderDistributionAddrStr")
 	KeyParamStoreKeyBaseProposerReward   = []byte("BaseProposerReward")
 	KeyParamStoreKeyBonusProposerReward  = []byte("BonusProposerReward")
 )
@@ -23,13 +23,13 @@ func ParamKeyTable() paramtypes.KeyTable {
 
 // NewParams creates new consumer parameters with provided arguments
 func NewParams(enabled bool, blocksPerDistributionTransmission int64,
-	distributionTransmissionChannel, providerFeePoolAddrStr string,
+	distributionTransmissionChannel, providerDistributionAddrStr string,
 	baseProposerReward, bonusProposerReward sdk.Dec) Params {
 	return Params{
 		Enabled:                           enabled,
 		BlocksPerDistributionTransmission: blocksPerDistributionTransmission,
 		DistributionTransmissionChannel:   distributionTransmissionChannel,
-		ProviderFeePoolAddrStr:            providerFeePoolAddrStr,
+		ProviderDistributionAddrStr:       providerDistributionAddrStr,
 		BaseProposerReward:                baseProposerReward,
 		BonusProposerReward:               bonusProposerReward,
 	}
@@ -60,8 +60,8 @@ func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
 			p.BlocksPerDistributionTransmission, validateInt64),
 		paramtypes.NewParamSetPair(KeyDistributionTransmissionChannel,
 			p.DistributionTransmissionChannel, validateString),
-		paramtypes.NewParamSetPair(KeyProviderFeePoolAddrStr,
-			p.ProviderFeePoolAddrStr, validateString),
+		paramtypes.NewParamSetPair(KeyProviderDistributionAddrStr,
+			p.ProviderDistributionAddrStr, validateString),
 		paramtypes.NewParamSetPair(KeyParamStoreKeyBaseProposerReward,
 			p.BaseProposerReward, validateBaseProposerReward),
 		paramtypes.NewParamSetPair(KeyParamStoreKeyBonusProposerReward,
