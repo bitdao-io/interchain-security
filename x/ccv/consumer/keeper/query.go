@@ -6,20 +6,8 @@ import (
 	"github.com/cosmos/interchain-security/x/ccv/consumer/types"
 )
 
-type ValidatorWeight struct {
-	Address string
-	Weight  sdk.Int
-}
-
-type CurrentProviderHoldingPoolResponse struct {
-	ValidatorWeights []ValidatorWeight
-	StartHeight      int64
-	CurrentHeight    int64
-}
-
 func (k Keeper) QueryCurrentProviderHoldingPool(c context.Context, _ *types.QueryCurrentProviderHoldingPoolRequest) (*types.CurrentProviderHoldingPool, error) {
 	ctx := sdk.UnwrapSDKContext(c)
-	totalWeights := sdk.ZeroInt()
 	validatorWeights := make([]*types.ValidatorWeight, 0)
 	var err error
 	k.IterateValidatorHoldingPools(ctx, func(valAddr []byte, weight sdk.Int) bool {
@@ -32,7 +20,6 @@ func (k Keeper) QueryCurrentProviderHoldingPool(c context.Context, _ *types.Quer
 			Weight:  weight,
 		}
 		validatorWeights = append(validatorWeights, vw)
-		totalWeights = totalWeights.Add(weight)
 		return false
 	})
 

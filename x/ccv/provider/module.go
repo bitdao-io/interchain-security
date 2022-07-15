@@ -345,6 +345,12 @@ func (am AppModule) OnRecvPacket(
 	_ sdk.AccAddress,
 ) ibcexported.Acknowledgement {
 
+	fmt.Println()
+	fmt.Println()
+	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>received a packet from consumer")
+
+	fmt.Println()
+	fmt.Println()
 	ack := am.keeper.OnRecvPacket(ctx, packet)
 
 	ctx.EventManager().EmitEvent(

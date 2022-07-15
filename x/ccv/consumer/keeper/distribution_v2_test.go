@@ -92,6 +92,10 @@ func (suite *KeeperTestSuite) TestDistribute() {
 	err = keeper.DistributeToProviderValidatorSetV2(ctx)
 	suite.Require().NoError(err)
 
+	lastTransmissionBLockHeight, err := keeper.GetLastTransmissionBlockHeight(ctx)
+	suite.Require().NoError(err)
+	suite.Require().EqualValues(1000, lastTransmissionBLockHeight.GetHeight())
+
 	count = 0 // reset count
 	keeper.IterateValidatorHoldingPools(ctx, func(valAddr []byte, weight sdk.Int) bool {
 		count++

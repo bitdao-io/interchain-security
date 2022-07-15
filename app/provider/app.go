@@ -344,6 +344,7 @@ func New(
 	bankBlockedAddrs := app.ModuleAccountAddrs()
 	delete(bankBlockedAddrs, authtypes.NewModuleAddress(
 		authtypes.FeeCollectorName).String())
+	delete(bankBlockedAddrs, authtypes.NewModuleAddress(ibcprovidertypes.DistributionAccount).String())
 
 	app.BankKeeper = bankkeeper.NewBaseKeeper(
 		appCodec,

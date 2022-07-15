@@ -2,8 +2,10 @@ package keeper
 
 import (
 	"bytes"
+	"fmt"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	channeltypes "github.com/cosmos/ibc-go/v3/modules/core/04-channel/types"
+	"github.com/cosmos/interchain-security/x/ccv/utils"
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -12,8 +14,6 @@ import (
 
 	"github.com/cosmos/interchain-security/x/ccv/consumer/types"
 	ccv "github.com/cosmos/interchain-security/x/ccv/types"
-	"github.com/cosmos/interchain-security/x/ccv/utils"
-
 	gogotypes "github.com/gogo/protobuf/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
@@ -184,7 +184,7 @@ func (k Keeper) DistributeToProviderValidatorSetV2(ctx sdk.Context) (err error) 
 	}
 
 	defer func() {
-		if err != nil {
+		if err == nil {
 			newLtbh := types.LastTransmissionBlockHeight{
 				Height: ctx.BlockHeight(),
 			}
@@ -206,6 +206,9 @@ func (k Keeper) DistributeToProviderValidatorSetV2(ctx sdk.Context) (err error) 
 
 	providerRewardStagingAddress := k.authKeeper.GetModuleAccount(ctx, types.ProviderRewardStagingName).GetAddress()
 	tokensInStagingAddress := k.bankKeeper.GetAllBalances(ctx, providerRewardStagingAddress)
+	if tokensInStagingAddress.IsZero() {
+		return nil // do nothing when no reward produced for distribution
+	}
 	providerPoolWeights := ccv.ProviderPoolWeights{
 		Addresses:   addresses,
 		Weights:     weights,
@@ -222,6 +225,9 @@ func (k Keeper) DistributeToProviderValidatorSetV2(ctx sdk.Context) (err error) 
 	// transfer tokens from toSendToProviderTokens address to provider via IBC
 	transmissionChannel := k.GetDistributionTransmissionChannel(ctx)
 	if len(transmissionChannel) != 0 {
+		fmt.Println()
+		fmt.Println("transmissionChannel: ", transmissionChannel)
+		fmt.Println()
 		// empty out the toSendToProviderTokens address
 		tstProviderAddr := k.authKeeper.GetModuleAccount(ctx,
 			types.ConsumerToSendToProviderName).GetAddress()
@@ -251,7 +257,8 @@ func (k Keeper) DistributeToProviderValidatorSetV2(ctx sdk.Context) (err error) 
 		return
 	}
 
-	// send packet over IBC
+	//return nil
+	//send packet over IBC
 	return utils.SendIBCPacket(
 		ctx,
 		k.scopedKeeper,
