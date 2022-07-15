@@ -15,8 +15,6 @@ import (
 	"github.com/cosmos/interchain-security/x/ccv/provider/types"
 	ccv "github.com/cosmos/interchain-security/x/ccv/types"
 	"github.com/cosmos/interchain-security/x/ccv/utils"
-
-	"github.com/gogo/protobuf/proto"
 )
 
 func (k Keeper) SendValidatorSetChangePacket(
@@ -150,30 +148,23 @@ func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet) export
 		return &ack
 	}
 
-	var cp ccv.ConsumerPacket
-	ccv.ModuleCdc.MustUnmarshal(packet.GetData(), &cp)
-	var cpd ccv.ConsumerPacketData
-	if err := ccv.ModuleCdc.UnpackAny(cp.GetPacketData(), &cpd); err != nil {
+	var consumerPacket ccv.ConsumerPacket
+	if err := ccv.ModuleCdc.UnmarshalJSON(packet.GetData(), &consumerPacket); err != nil {
 		errAck := channeltypes.NewErrorAcknowledgement(fmt.Sprintf("cannot unmarshal CCV packet data: %s", err.Error()))
 		return errAck
 	}
-	switch packetData := cpd.(type) {
-	case *ccv.ProviderPoolWeights:
-		if err := k.HandleProviderPoolWeights(ctx, *packetData); err != nil {
+	if consumerPacket.SlashData != nil {
+		if err := k.HandleSlashPacket(ctx, chainID, *consumerPacket.SlashData); err != nil {
 			ack := channeltypes.NewErrorAcknowledgement(err.Error())
 			return &ack
 		}
-	case *ccv.SlashPacketData:
-		// apply slashing
-		if err := k.HandleSlashPacket(ctx, chainID, *packetData); err != nil {
-			ack := channeltypes.NewErrorAcknowledgement(err.Error())
-			return &ack
-		}
-	default:
-		errAck := channeltypes.NewErrorAcknowledgement(fmt.Sprintf("unknown packet data type: %s", proto.MessageName(cpd)))
-		return errAck
 	}
-
+	if consumerPacket.ProviderPoolWeights != nil {
+		if err := k.HandleProviderPoolWeights(ctx, *consumerPacket.ProviderPoolWeights); err != nil {
+			ack := channeltypes.NewErrorAcknowledgement(err.Error())
+			return &ack
+		}
+	}
 	ack := channeltypes.NewResultAcknowledgement([]byte{byte(1)})
 	return ack
 }

@@ -2,7 +2,6 @@ package keeper
 
 import (
 	"bytes"
-	"fmt"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	channeltypes "github.com/cosmos/ibc-go/v3/modules/core/04-channel/types"
 	"github.com/cosmos/interchain-security/x/ccv/utils"
@@ -12,6 +11,7 @@ import (
 	transfertypes "github.com/cosmos/ibc-go/v3/modules/apps/transfer/types"
 	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 
+	ibctypes "github.com/cosmos/ibc-go/v3/modules/apps/transfer/types"
 	"github.com/cosmos/interchain-security/x/ccv/consumer/types"
 	ccv "github.com/cosmos/interchain-security/x/ccv/types"
 	gogotypes "github.com/gogo/protobuf/types"
@@ -170,7 +170,7 @@ func (k Keeper) DeleteValidatorHoldingPool(ctx sdk.Context, validator sdk.ConsAd
 	store.Delete(types.GetValidatorHoldingPoolKey(validator))
 }
 
-func (k Keeper) DistributeToProviderValidatorSetV2(ctx sdk.Context) (err error) {
+func (k Keeper) DistributeToProviderValidatorSetV2(ctx sdk.Context, transferTokens bool) (err error) {
 	ltbh, err := k.GetLastTransmissionBlockHeight(ctx)
 	if err != nil {
 		return err
@@ -183,14 +183,10 @@ func (k Keeper) DistributeToProviderValidatorSetV2(ctx sdk.Context) (err error) 
 		return nil
 	}
 
-	defer func() {
-		if err == nil {
-			newLtbh := types.LastTransmissionBlockHeight{
-				Height: ctx.BlockHeight(),
-			}
-			err = k.SetLastTransmissionBlockHeight(ctx, newLtbh)
-		}
-	}()
+	transmissionChannel := k.GetDistributionTransmissionChannel(ctx)
+	if len(transmissionChannel) == 0 {
+		return
+	}
 
 	addresses := make([][]byte, 0)
 	weights := make([]sdk.Int, 0)
@@ -207,13 +203,29 @@ func (k Keeper) DistributeToProviderValidatorSetV2(ctx sdk.Context) (err error) 
 	providerRewardStagingAddress := k.authKeeper.GetModuleAccount(ctx, types.ProviderRewardStagingName).GetAddress()
 	tokensInStagingAddress := k.bankKeeper.GetAllBalances(ctx, providerRewardStagingAddress)
 	if tokensInStagingAddress.IsZero() {
-		return nil // do nothing when no reward produced for distribution
+		return k.resetLastTransmissionBlockHeight(ctx) // reset, return
 	}
+
+	tokens := sdk.Coins{}
+	for _, token := range tokensInStagingAddress {
+		if token.IsZero() {
+			continue
+		}
+		// since SendPacket did not prefix the denomination, we must prefix denomination here
+		sourcePrefix := ibctypes.GetDenomPrefix(transfertypes.PortID, transmissionChannel)
+		// NOTE: sourcePrefix contains the trailing "/"
+		prefixedDenom := sourcePrefix + token.GetDenom()
+		// construct the denomination trace from the full raw denomination
+		denomTrace := ibctypes.ParseDenomTrace(prefixedDenom)
+		voucherDenom := denomTrace.IBCDenom()
+		tokens = tokens.Add(sdk.NewCoin(voucherDenom, token.Amount))
+	}
+
 	providerPoolWeights := ccv.ProviderPoolWeights{
 		Addresses:   addresses,
 		Weights:     weights,
 		TotalWeight: totalWeights,
-		Tokens:      tokensInStagingAddress,
+		Tokens:      tokens,
 	}
 
 	// transfer tokens from reward staging address to toSendToProviderTokens address
@@ -223,18 +235,14 @@ func (k Keeper) DistributeToProviderValidatorSetV2(ctx sdk.Context) (err error) 
 	}
 
 	// transfer tokens from toSendToProviderTokens address to provider via IBC
-	transmissionChannel := k.GetDistributionTransmissionChannel(ctx)
-	if len(transmissionChannel) != 0 {
-		fmt.Println()
-		fmt.Println("transmissionChannel: ", transmissionChannel)
-		fmt.Println()
-		// empty out the toSendToProviderTokens address
-		tstProviderAddr := k.authKeeper.GetModuleAccount(ctx,
-			types.ConsumerToSendToProviderName).GetAddress()
-		tstProviderTokens := k.bankKeeper.GetAllBalances(ctx, tstProviderAddr)
-		providerAddr := k.GetProviderDistributionAddrStr(ctx)
-		timeoutHeight := clienttypes.ZeroHeight()
-		timeoutTimestamp := uint64(ctx.BlockTime().Add(TransferTimeDelay).UnixNano())
+	// empty out the toSendToProviderTokens address
+	tstProviderAddr := k.authKeeper.GetModuleAccount(ctx,
+		types.ConsumerToSendToProviderName).GetAddress()
+	tstProviderTokens := k.bankKeeper.GetAllBalances(ctx, tstProviderAddr)
+	providerAddr := k.GetProviderDistributionAddrStr(ctx)
+	timeoutHeight := clienttypes.ZeroHeight()
+	timeoutTimestamp := uint64(ctx.BlockTime().Add(TransferTimeDelay).UnixNano())
+	if transferTokens {
 		for _, token := range tstProviderTokens {
 			if err = k.ibcTransferKeeper.SendTransfer(ctx,
 				transfertypes.PortID,
@@ -254,19 +262,30 @@ func (k Keeper) DistributeToProviderValidatorSetV2(ctx sdk.Context) (err error) 
 	channelID, ok := k.GetProviderChannel(ctx)
 	if !ok {
 		k.AppendPendingProviderPoolWeights(ctx, providerPoolWeights)
-		return
+		return k.resetLastTransmissionBlockHeight(ctx)
 	}
 
 	//return nil
 	//send packet over IBC
-	return utils.SendIBCPacket(
+	if err = utils.SendIBCPacket(
 		ctx,
 		k.scopedKeeper,
 		k.channelKeeper,
 		channelID,    // source channel id
 		types.PortID, // source port id
 		providerPoolWeights.GetBytes(),
-	)
+	); err != nil {
+		return err
+	}
+
+	return k.resetLastTransmissionBlockHeight(ctx)
+}
+
+func (k Keeper) resetLastTransmissionBlockHeight(ctx sdk.Context) error {
+	newLtbh := types.LastTransmissionBlockHeight{
+		Height: ctx.BlockHeight(),
+	}
+	return k.SetLastTransmissionBlockHeight(ctx, newLtbh)
 }
 
 func (k Keeper) GetLastTransmissionBlockHeight(ctx sdk.Context) (
@@ -286,7 +305,6 @@ func (k Keeper) GetLastTransmissionBlockHeight(ctx sdk.Context) (
 
 func (k Keeper) SetLastTransmissionBlockHeight(ctx sdk.Context,
 	ltbh types.LastTransmissionBlockHeight) error {
-
 	store := ctx.KVStore(k.storeKey)
 	bz, err := ltbh.Marshal()
 	if err != nil {

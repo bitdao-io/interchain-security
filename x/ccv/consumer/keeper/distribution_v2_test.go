@@ -78,8 +78,10 @@ func (suite *KeeperTestSuite) TestDistribute() {
 		expectedTotalPower += expectedVotingPower
 	}
 
+	keeper.SetDistributionTransmissionChannel(ctx, "channel1")
+
 	//
-	err = keeper.DistributeToProviderValidatorSetV2(ctx)
+	err = keeper.DistributeToProviderValidatorSetV2(ctx, false)
 	suite.Require().NoError(err)
 	var count int
 	keeper.IterateValidatorHoldingPools(ctx, func(valAddr []byte, weight sdk.Int) bool {
@@ -89,7 +91,7 @@ func (suite *KeeperTestSuite) TestDistribute() {
 	suite.Require().EqualValues(len(suite.consumerChain.Vals.Validators), count)
 
 	ctx = ctx.WithBlockHeight(1000)
-	err = keeper.DistributeToProviderValidatorSetV2(ctx)
+	err = keeper.DistributeToProviderValidatorSetV2(ctx, false)
 	suite.Require().NoError(err)
 
 	lastTransmissionBLockHeight, err := keeper.GetLastTransmissionBlockHeight(ctx)
@@ -117,7 +119,7 @@ func (suite *KeeperTestSuite) TestDistribute() {
 	suite.Require().EqualValues(4, len(ppw.Addresses))
 	suite.Require().EqualValues(len(ppw.Addresses), len(ppw.Weights))
 	suite.Require().EqualValues(expectedTotalPower, ppw.TotalWeight.Int64())
-	suite.Require().EqualValues(25, ppw.Tokens.AmountOf(sdk.DefaultBondDenom).Int64())
+	suite.Require().EqualValues(25, ppw.Tokens[0].Amount.Int64())
 
 	keeper.ClearPendingProviderPoolWeights(ctx)
 	ppws = keeper.GetPendingProviderPoolWeights(ctx)

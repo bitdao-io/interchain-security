@@ -184,7 +184,7 @@ func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {
 // Flush PendingChanges to ABCI, and write acknowledgements for any packets that have finished unbonding.
 func (am AppModule) EndBlock(ctx sdk.Context, req abci.RequestEndBlock) []abci.ValidatorUpdate {
 	// distribution transmission
-	err := am.keeper.DistributeToProviderValidatorSetV2(ctx)
+	err := am.keeper.DistributeToProviderValidatorSetV2(ctx, true)
 	if err != nil {
 		panic(err)
 	}

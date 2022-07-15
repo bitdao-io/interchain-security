@@ -43,9 +43,12 @@ func (k Keeper) Distribute(ctx sdk.Context) {
 	}
 
 	pending := k.GetPendingProviderPoolWeights(ctx)
+	if len(pending.PoolWeights) == 0 {
+		return
+	}
 	breakIndex := -1
 	for i, ppw := range pending.GetPoolWeights() {
-		if balances.Len() == 0 || ppw.Tokens.IsAnyGT(balances) {
+		if !IsTokensArrived(ppw.Tokens, balances) {
 			breakIndex = i
 			break
 		}
@@ -66,6 +69,19 @@ func (k Keeper) Distribute(ctx sdk.Context) {
 	}
 	pending.PoolWeights = pending.PoolWeights[breakIndex:]
 	k.SetPendingProviderPoolWeights(ctx, pending)
+}
+
+func IsTokensArrived(tokens sdk.Coins, balance sdk.Coins) bool {
+	if len(balance) == 0 {
+		return false
+	}
+	for _, coin := range tokens {
+		amt := balance.AmountOf(coin.Denom)
+		if coin.Amount.GT(amt) {
+			return false
+		}
+	}
+	return true
 }
 
 func (k Keeper) AllocateTokens(ctx sdk.Context, weights ccv.ProviderPoolWeights) {
