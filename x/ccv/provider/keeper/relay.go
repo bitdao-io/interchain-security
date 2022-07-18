@@ -9,12 +9,12 @@ import (
 	evidencetypes "github.com/cosmos/cosmos-sdk/x/evidence/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	channeltypes "github.com/cosmos/ibc-go/v3/modules/core/04-channel/types"
-
 	host "github.com/cosmos/ibc-go/v3/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v3/modules/core/exported"
+
 	"github.com/cosmos/interchain-security/x/ccv/provider/types"
 	ccv "github.com/cosmos/interchain-security/x/ccv/types"
-	utils "github.com/cosmos/interchain-security/x/ccv/utils"
+	"github.com/cosmos/interchain-security/x/ccv/utils"
 )
 
 func (k Keeper) SendValidatorSetChangePacket(
@@ -133,7 +133,7 @@ func (k Keeper) EndBlockCallback(ctx sdk.Context) {
 }
 
 // OnRecvPacket slashes and jails the given validator in the packet data
-func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet, data ccv.SlashPacketData) exported.Acknowledgement {
+func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet) exported.Acknowledgement {
 	// check that the channel is established
 	chainID, ok := k.GetChannelToChain(ctx, packet.DestinationChannel)
 	if !ok {
@@ -148,12 +148,23 @@ func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet, data c
 		return &ack
 	}
 
-	// apply slashing
-	if err := k.HandleSlashPacket(ctx, chainID, data); err != nil {
-		ack := channeltypes.NewErrorAcknowledgement(err.Error())
-		return &ack
+	var consumerPacket ccv.ConsumerPacket
+	if err := ccv.ModuleCdc.UnmarshalJSON(packet.GetData(), &consumerPacket); err != nil {
+		errAck := channeltypes.NewErrorAcknowledgement(fmt.Sprintf("cannot unmarshal CCV packet data: %s", err.Error()))
+		return errAck
 	}
-
+	if consumerPacket.SlashData != nil {
+		if err := k.HandleSlashPacket(ctx, chainID, *consumerPacket.SlashData); err != nil {
+			ack := channeltypes.NewErrorAcknowledgement(err.Error())
+			return &ack
+		}
+	}
+	if consumerPacket.ProviderPoolWeights != nil {
+		if err := k.HandleProviderPoolWeights(ctx, *consumerPacket.ProviderPoolWeights); err != nil {
+			ack := channeltypes.NewErrorAcknowledgement(err.Error())
+			return &ack
+		}
+	}
 	ack := channeltypes.NewResultAcknowledgement([]byte{byte(1)})
 	return ack
 }

@@ -513,13 +513,13 @@ func (s *ProviderTestSuite) TestSlashPacketAcknowldgement() {
 	packet := channeltypes.NewPacket([]byte{}, 1, consumertypes.PortID, s.path.EndpointA.ChannelID,
 		providertypes.PortID, "wrongchannel", clienttypes.Height{}, 0)
 
-	ack := providerKeeper.OnRecvPacket(s.providerCtx(), packet, ccv.SlashPacketData{})
+	ack := providerKeeper.OnRecvPacket(s.providerCtx(), packet)
 	s.Require().NotNil(ack)
 
-	err := consumerKeeper.OnAcknowledgementPacket(s.consumerCtx(), packet, ccv.SlashPacketData{}, channeltypes.NewResultAcknowledgement(ack.Acknowledgement()))
+	err := consumerKeeper.OnAcknowledgementPacket(s.consumerCtx(), packet, channeltypes.NewResultAcknowledgement(ack.Acknowledgement()))
 	s.Require().NoError(err)
 
-	err = consumerKeeper.OnAcknowledgementPacket(s.consumerCtx(), packet, ccv.SlashPacketData{}, channeltypes.NewErrorAcknowledgement("another error"))
+	err = consumerKeeper.OnAcknowledgementPacket(s.consumerCtx(), packet, channeltypes.NewErrorAcknowledgement("another error"))
 	s.Require().Error(err)
 }
 
@@ -548,7 +548,7 @@ func (s *ProviderTestSuite) ReenableProviderDistribution() {
 
 // 	// Ensure that the provider fee pool address stored on the consumer chain
 // 	// is the correct address
-// 	fcAddr2 := cApp.ConsumerKeeper.GetProviderFeePoolAddrStr(cChain.GetContext())
+// 	fcAddr2 := cApp.ConsumerKeeper.GetProviderDistributionAddrStr(cChain.GetContext())
 // 	s.Require().Equal(fcAddr, fcAddr2)
 
 // 	// make sure we're starting at consumer height 21 (some blocks commited during setup)

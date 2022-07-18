@@ -2,6 +2,7 @@ package types
 
 import (
 	context "context"
+	"github.com/cosmos/ibc-go/v3/modules/apps/transfer/types"
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -16,6 +17,7 @@ import (
 	ibcexported "github.com/cosmos/ibc-go/v3/modules/core/exported"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
 // StakingKeeper defines the contract expected by provider-chain ccv module from a Staking Module that will keep track
@@ -44,6 +46,10 @@ type SlashingKeeper interface {
 	SlashFractionDoubleSign(ctx sdk.Context) (res sdk.Dec)
 	Tombstone(sdk.Context, sdk.ConsAddress)
 	IsTombstoned(sdk.Context, sdk.ConsAddress) bool
+}
+
+type DistributionKeeper interface {
+	AllocateTokensToValidator(ctx sdk.Context, val stakingtypes.ValidatorI, tokens sdk.DecCoins)
 }
 
 // ChannelKeeper defines the expected IBC channel keeper
@@ -105,6 +111,8 @@ type IBCTransferKeeper interface {
 		timeoutHeight clienttypes.Height,
 		timeoutTimestamp uint64,
 	) error
+
+	GetDenomTrace(ctx sdk.Context, denomTraceHash tmbytes.HexBytes) (types.DenomTrace, bool)
 }
 
 // IBCKeeper defines the expected interface needed for openning a

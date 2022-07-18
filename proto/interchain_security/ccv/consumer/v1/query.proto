@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package interchain_security.ccv.consumer.v1;
+
+option go_package = "github.com/cosmos/interchain-security/x/ccv/consumer/types";
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "cosmos/base/v1beta1/coin.proto";
+
+service Query {
+  rpc QueryCurrentProviderHoldingPool(QueryCurrentProviderHoldingPoolRequest) returns (CurrentProviderHoldingPool) {
+    option (google.api.http).get = "/ccv/consumer/v1/current_provider_holding_pool";
+  }
+}
+
+message QueryCurrentProviderHoldingPoolRequest {}
+
+message CurrentProviderHoldingPool {
+  repeated ValidatorWeight validator_weights = 1;
+  int64 start_height = 2;
+  int64 current_height = 3;
+  repeated cosmos.base.v1beta1.Coin tokens = 4 [
+    (gogoproto.nullable) = false,
+    (gogoproto.castrepeated) = "github.com/cosmos/cosmos-sdk/types.Coins",
+    (gogoproto.moretags) = "yaml:\"tokens\""
+  ];
+}
+
+message ValidatorWeight {
+  string address = 1;
+  string weight = 2 [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int", (gogoproto.nullable) = false];
+}

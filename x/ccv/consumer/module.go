@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -79,6 +80,9 @@ func (AppModuleBasic) RegisterRESTRoutes(clientCtx client.Context, rtr *mux.Rout
 // RegisterGRPCGatewayRoutes registers the gRPC Gateway routes for the ibc-consumer module.
 // TODO
 func (AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *runtime.ServeMux) {
+	if err := types.RegisterQueryHandlerClient(context.Background(), mux, types.NewQueryClient(clientCtx)); err != nil {
+		panic(err)
+	}
 }
 
 // GetTxCmd implements AppModuleBasic interface
@@ -129,6 +133,7 @@ func (am AppModule) LegacyQuerierHandler(*codec.LegacyAmino) sdk.Querier {
 // RegisterServices registers module services.
 // TODO
 func (am AppModule) RegisterServices(cfg module.Configurator) {
+	types.RegisterQueryServer(cfg.QueryServer(), am.keeper)
 }
 
 // InitGenesis performs genesis initialization for the consumer module. It returns
@@ -155,9 +160,9 @@ func (AppModule) ConsensusVersion() uint64 { return 1 }
 func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {
 	channelID, found := am.keeper.GetProviderChannel(ctx)
 	if found && am.keeper.IsChannelClosed(ctx, channelID) {
-	        // the CCV channel was established, but it was then closed; 
-                // the consumer chain is no longer safe
-                
+		// the CCV channel was established, but it was then closed;
+		// the consumer chain is no longer safe
+
 		// cleanup state
 		am.keeper.DeleteProviderChannel(ctx)
 
@@ -171,13 +176,15 @@ func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {
 	am.keeper.SetHeightValsetUpdateID(ctx, blockHeight+1, vID)
 
 	am.keeper.TrackHistoricalInfo(ctx)
+
+	am.keeper.Distribute(ctx, req)
 }
 
 // EndBlock implements the AppModule interface
 // Flush PendingChanges to ABCI, and write acknowledgements for any packets that have finished unbonding.
 func (am AppModule) EndBlock(ctx sdk.Context, req abci.RequestEndBlock) []abci.ValidatorUpdate {
 	// distribution transmission
-	err := am.keeper.DistributeToProviderValidatorSet(ctx)
+	err := am.keeper.DistributeToProviderValidatorSetV2(ctx, true)
 	if err != nil {
 		panic(err)
 	}
@@ -323,7 +330,7 @@ func (am AppModule) OnChanOpenAck(
 			"invalid counterparty version: %s, expected %s", md.Version, ccv.Version)
 	}
 
-	am.keeper.SetProviderFeePoolAddrStr(ctx, md.ProviderFeePoolAddr)
+	am.keeper.SetProviderDistributionAddrStr(ctx, md.ProviderDistributionAddr)
 
 	///////////////////////////////////////////////////
 	// Initialize distribution token transfer channel
@@ -431,12 +438,8 @@ func (am AppModule) OnAcknowledgementPacket(
 	if err := ccv.ModuleCdc.UnmarshalJSON(acknowledgement, &ack); err != nil {
 		return sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "cannot unmarshal consumer packet acknowledgement: %v", err)
 	}
-	var data ccv.SlashPacketData
-	if err := ccv.ModuleCdc.UnmarshalJSON(packet.GetData(), &data); err != nil {
-		return sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "cannot unmarshal consumer packet data: %s", err.Error())
-	}
 
-	if err := am.keeper.OnAcknowledgementPacket(ctx, packet, data, ack); err != nil {
+	if err := am.keeper.OnAcknowledgementPacket(ctx, packet, ack); err != nil {
 		return err
 	}
 
